@@ -336,3 +336,92 @@ def outer_scope_getter(scope, new_scope=""):
         val = getter(name, *args, **kwargs)
         return val
     return _getter
+
+
+
+# ================================================================
+# Inputs
+# ================================================================
+
+def is_placeholder(x):
+    return type(x) is tf.Tensor and len(x.op.inputs) == 0
+
+class TfInput(object):
+    def __init__(self, name="(unnamed)"):
+        """Generalized Tensorflow placeholder. The main differences are:
+            - possibly uses multiple placeholders internally and returns multiple values
+            - can apply light postprocessing to the value feed to placeholder.
+        """
+        self.name = name
+
+    def get(self):
+        """Return the tf variable(s) representing the possibly postprocessed value
+        of placeholder(s).
+        """
+        raise NotImplemented()
+
+    def make_feed_dict(data):
+        """Given data input it to the placeholder(s)."""
+        raise NotImplemented()
+
+
+class PlacholderTfInput(TfInput):
+    def __init__(self, placeholder):
+        """Wrapper for regular tensorflow placeholder."""
+        super().__init__(placeholder.name)
+        self._placeholder = placeholder
+
+    def get(self):
+        return self._placeholder
+
+    def make_feed_dict(self, data):
+        return {self._placeholder: data}
+
+
+class BatchInput(PlacholderTfInput):
+    def __init__(self, shape, dtype=tf.float32, name=None):
+        """Creates a placeholder for a batch of tensors of a given shape and dtype
+
+        Parameters
+        ----------
+        shape: [int]
+            shape of a single elemenet of the batch
+        dtype: tf.dtype
+            number representation used for tensor contents
+        name: str
+            name of the underlying placeholder
+        """
+        super().__init__(tf.placeholder(dtype, [None] + list(shape), name=name))
+
+
+class Uint8Input(PlacholderTfInput):
+    def __init__(self, shape, name=None):
+        """Takes input in uint8 format which is cast to float32 and divided by 255
+        before passing it to the model.
+
+        On GPU this ensures lower data transfer times.
+
+        Parameters
+        ----------
+        shape: [int]
+            shape of the tensor.
+        name: str
+            name of the underlying placeholder
+        """
+
+        super().__init__(tf.placeholder(tf.uint8, [None] + list(shape), name=name))
+        self._shape = shape
+        self._output = tf.cast(super().get(), tf.float32) / 255.0
+
+    def get(self):
+        return self._output
+
+
+def ensure_tf_input(thing):
+    """Takes either tf.placeholder of TfInput and outputs equivalent TfInput"""
+    if isinstance(thing, TfInput):
+        return thing
+    elif is_placeholder(thing):
+        return PlacholderTfInput(thing)
+    else:
+        raise ValueError("Must be a placeholder or TfInput")
