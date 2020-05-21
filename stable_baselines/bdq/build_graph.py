@@ -193,42 +193,40 @@ def build_act(q_func, ob_space, ac_space, sess,
         function to select an action given observation.
 `       See the top of the file for details.
     """
-    # with tf.variable_scope(scope, reuse=reuse):
-    policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions)
-    # print("Build act DEBUG: policy obs_ph ", policy.obs_ph)
-    # print("Build act DEBUG: policy processed obs ", policy.processed_obs)
+    with tf.variable_scope(scope, reuse=reuse):
+        policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
+        print("actor q_function", policy.q_values)
+        obs_phs = (policy.obs_ph, policy.processed_obs)
 
-    obs_phs = (policy.obs_ph, policy.processed_obs)
+        # observations_ph = tf_util.ensure_tf_input(make_obs_ph(ob_space,"observation"))
+        stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic") 
+        update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
+        eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
+        # q_values = q_func(observations_ph.get(), sess, ob_space, ac_space, 1, 1, None,
+        #                   num_actions, scope="q_func")
+        # q_values = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
 
-    # observations_ph = tf_util.ensure_tf_input(make_obs_ph(ob_space,"observation"))
-    stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic") 
-    update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
-    eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
-    # q_values = q_func(observations_ph.get(), sess, ob_space, ac_space, 1, 1, None,
-    #                   num_actions, scope="q_func")
-    # q_values = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
+        assert (num_action_streams >= 1), "number of action branches is not acceptable, has to be >=1"
 
-    assert (num_action_streams >= 1), "number of action branches is not acceptable, has to be >=1"
+        # TODO better: enable non-uniform number of sub-actions per joint
+        num_actions_pad = num_actions//num_action_streams # number of sub-actions per action dimension
 
-    # TODO better: enable non-uniform number of sub-actions per joint
-    num_actions_pad = num_actions//num_action_streams # number of sub-actions per action dimension
+        output_actions = []
+        for dim in range(num_action_streams):
+            q_values_batch = policy.q_values[dim][0] # TODO better: does not allow evaluating actions over a whole batch
+            deterministic_action = tf.argmax(q_values_batch)
+            random_action = tf.random_uniform([], minval=0, maxval=num_actions//num_action_streams, dtype=tf.int64)
+            chose_random = tf.random_uniform([], minval=0, maxval=1, dtype=tf.float32) < eps
+            stochastic_action = tf.cond(chose_random, lambda: random_action, lambda: deterministic_action)
+            output_action = tf.cond(stochastic_ph, lambda: stochastic_action, lambda: deterministic_action)
+            output_actions.append(output_action)
 
-    output_actions = []
-    for dim in range(num_action_streams):
-        q_values_batch = policy.q_values[dim][0] # TODO better: does not allow evaluating actions over a whole batch
-        deterministic_action = tf.argmax(q_values_batch)
-        random_action = tf.random_uniform([], minval=0, maxval=num_actions//num_action_streams, dtype=tf.int64)
-        chose_random = tf.random_uniform([], minval=0, maxval=1, dtype=tf.float32) < eps
-        stochastic_action = tf.cond(chose_random, lambda: random_action, lambda: deterministic_action)
-        output_action = tf.cond(stochastic_ph, lambda: stochastic_action, lambda: deterministic_action)
-        output_actions.append(output_action)
+        update_eps_expr = eps.assign(tf.cond(update_eps_ph >= 0, lambda: update_eps_ph, lambda: eps)) 
 
-    update_eps_expr = eps.assign(tf.cond(update_eps_ph >= 0, lambda: update_eps_ph, lambda: eps)) 
-
-    _act = tf_util.function(inputs=[policy.obs_ph, stochastic_ph, update_eps_ph],
-                            outputs=output_actions,
-                            givens={update_eps_ph: -1.0, stochastic_ph: True},
-                            updates=[update_eps_expr])
+        _act = tf_util.function(inputs=[policy.obs_ph, stochastic_ph, update_eps_ph],
+                                outputs=output_actions,
+                                givens={update_eps_ph: -1.0, stochastic_ph: True},
+                                updates=[update_eps_expr])
 
     def act(obs, stochastic=True, update_eps=-1):
         return _act(obs, stochastic, update_eps)
@@ -620,10 +618,11 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
     assert independent and losses_version == 4 or not independent, 'independent needs to be used along with loss v4'
     assert independent and target_version == "indep" or not independent, 'independent needs to be used along with independent TD targets'
 
+    act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess,
+                                num_actions, num_action_streams, scope=scope, reuse=reuse)
 
     with tf.variable_scope(scope, reuse=reuse):
-        act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess,
-                                  num_actions, num_action_streams, scope=scope, reuse=reuse)
+
         # Set up placeholders
         # obs_phs = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_t"))
         # print(num_action_streams)
@@ -634,37 +633,42 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
         importance_weights_ph = tf.placeholder(tf.float32, [None], name="weight")
 
         # Q-network evaluation
-        with tf.variable_scope("step_model", reuse=True, custom_getter=tf_util.outer_scope_getter("step_model")):
-            step_model = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions,
-                                reuse=True, obs_phs=obs_phs) # reuse parameters from act
+        # with tf.variable_scope("q_func", reuse=True, custom_getter=tf_util.outer_scope_getter("q_func")):
+        step_model = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, 
+                            scope="q_func", reuse=True, obs_phs=obs_phs) # reuse parameters from act
             # q_t = q_func(obs_phs.get(), num_actions, scope="q_func", reuse=True) # reuse parameters from act
         # q_func_vars = U.scope_vars(U.absolute_scope_name("q_func"))
-        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/model")
-        print("q_function to optimize", step_model)
+        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/q_func")
+        print("q_function to optimize", step_model.q_values)
         print("qfunction parameters", q_func_vars)
         # Target Q-network evalution
 
-        with tf.variable_scope("target_q_func", reuse=False):
-            target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, 
-                                        num_actions, reuse=False)
+        # with tf.variable_scope("target_q_func", reuse=False):
+        target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, 
+                               num_actions, scope="target_q_func", reuse=False)
         target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                             scope=tf.get_variable_scope().name + "/target_q_func")
+        print("target q_func", target_policy.q_values)
+        print("target q_func vars", target_q_func_vars)
+        
         # compute estimate of best possible value starting from state at t + 1
-        double_q_values = None
+        # double_q_values = None
         double_obs_ph = target_policy.obs_ph
         if double_q: 
-            with tf.variable_scope("double_q", reuse=True, custom_getter=tf_util.outer_scope_getter("double_q")):
-                # selection_q_tp1 = q_func(obs_tp1_input, num_actions, scope="q_func", reuse=True)
-                selection_q_tp1 = q_func(sess, ob_space, ac_space, 1, 1, None,
-                                            num_actions, reuse=True)
-                double_q_values = selection_q_tp1.q_values
-                double_obs_ph = selection_q_tp1.obs_ph
+            # with tf.variable_scope("q_func", reuse=True, custom_getter=tf_util.outer_scope_getter("q_func")):
+            # selection_q_tp1 = q_func(obs_tp1_input, num_actions, scope="q_func", reuse=True)
+            selection_q_tp1 = q_func(sess, ob_space, ac_space, 1, 1, None,
+                                     num_actions, scope="q_func", reuse=True)
+            # double_q_values = selection_q_tp1.q_values
+            double_obs_ph = selection_q_tp1.obs_ph
         else: 
             # selection_q_tp1 = q_tp1
             selection_q_tp1 = target_policy
+        print("double q_func", selection_q_tp1.q_values)
 
-        num_actions_pad = num_actions//num_action_streams
-
+        num_actions_pad = num_actions//num_action_streams  
+    
+    with tf.variable_scope("loss", reuse=reuse):
         q_values = []
         for dim in range(num_action_streams):
             selected_a = tf.squeeze(tf.slice(act_t_ph, [0, dim], [batch_size, 1])) # TODO better?
@@ -673,14 +677,14 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
         if target_version == "indep":
             target_q_values = []
             for dim in range(num_action_streams):
-                selected_a = tf.argmax(double_q_values[dim], axis=1)
+                selected_a = tf.argmax(selection_q_tp1.q_values[dim], axis=1)
                 selected_q = tf.reduce_sum(tf.one_hot(selected_a, num_actions_pad) * target_policy.q_values[dim], axis=1)
                 masked_selected_q = (1.0 - done_mask_ph) * selected_q
                 target_q = rew_t_ph + gamma * masked_selected_q
                 target_q_values.append(target_q)
         elif target_version == "max":
             for dim in range(num_action_streams):
-                selected_a = tf.argmax(double_q_values[dim], axis=1)
+                selected_a = tf.argmax(selection_q_tp1.q_values[dim], axis=1)
                 selected_q = tf.reduce_sum(tf.one_hot(selected_a, num_actions_pad) * target_policy.q_values[dim], axis=1) 
                 masked_selected_q = (1.0 - done_mask_ph) * selected_q
                 if dim == 0:
@@ -690,7 +694,7 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
             target_q_values = [rew_t_ph + gamma * max_next_q_values] * num_action_streams # TODO better?
         elif target_version == "mean":
             for dim in range(num_action_streams):
-                selected_a = tf.argmax(double_q_values[dim], axis=1)
+                selected_a = tf.argmax(selection_q_tp1.q_values[dim], axis=1)
                 selected_q = tf.reduce_sum(tf.one_hot(selected_a, num_actions_pad) * target_policy.q_values[dim], axis=1) 
                 masked_selected_q = (1.0 - done_mask_ph) * selected_q
                 if dim == 0:
@@ -749,14 +753,6 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
                                             total_n_streams=(num_action_streams + (1 if dueling else 0)),
                                             clip_val=grad_norm_clipping)
             optimize_expr = [optimize_expr]
-        
-        # compute optimization op (potentially with gradient clipping)
-        # print(q_func_vars)
-        # gradients = optimizer.compute_gradients(mean_loss, var_list=q_func_vars)
-        # if grad_norm_clipping is not None:
-        #     for i, (grad, var) in enumerate(gradients):
-        #         if grad is not None:
-        #             gradients[i] = (tf.clip_by_norm(grad, grad_norm_clipping), var)
         
         ## FIXME tf summary scalars are wrong. They are not matching the original code.
         tf.summary.scalar("loss", mean_loss)
