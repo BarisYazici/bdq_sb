@@ -7,7 +7,7 @@ import gym
 from stable_baselines import logger
 from stable_baselines.common import tf_util, OffPolicyRLModel, SetVerbosity, TensorboardWriter
 from stable_baselines.common.vec_env import VecEnv
-from stable_baselines.common.schedules import LinearSchedule
+from stable_baselines.common.schedules import LinearSchedule, PiecewiseSchedule
 from stable_baselines.bdq.build_graph import build_train
 from stable_baselines.bdq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 from stable_baselines.bdq.policies import BDQPolicy, ActionBranching
@@ -58,9 +58,9 @@ class BDQ(OffPolicyRLModel):
     :param n_cpu_tf_sess: (int) The number of threads for TensorFlow operations
         If None, the number of cpu of the current machine will be used.
     """
-    def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, buffer_size=50000, exploration_fraction=0.1,
-                 exploration_final_eps=0.02, exploration_initial_eps=1.0, train_freq=1, batch_size=64, double_q=True,
-                 learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
+    def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=1e-4, buffer_size=int(1e6), epsilon_greedy=True,
+                 exploration_fraction=0.1,  exploration_final_eps=0.02, exploration_initial_eps=1.0, train_freq=1, 
+                 batch_size=64, double_q=True, learning_starts=1000, target_network_update_freq=500, prioritized_replay=True,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6, param_noise=False,
                  n_cpu_tf_sess=None, verbose=0, tensorboard_log=None,
@@ -88,6 +88,7 @@ class BDQ(OffPolicyRLModel):
         self.tensorboard_log = tensorboard_log
         self.full_tensorboard_log = full_tensorboard_log
         self.double_q = double_q
+        self.epsilon_greedy = True
 
         self.graph = None
         self.sess = None
@@ -141,7 +142,7 @@ class BDQ(OffPolicyRLModel):
                 self.set_random_seed(self.seed)
                 self.sess = tf_util.make_session(num_cpu=self.n_cpu_tf_sess, graph=self.graph)
 
-                optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+                # optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
 
                 self.act, self._train_step, self.update_target, self.step_model = build_train(
                     # make_obs_ph=make_obs_ph,
@@ -163,7 +164,7 @@ class BDQ(OffPolicyRLModel):
                 )
                 self.proba_step = self.step_model.proba_step
                 self.params = tf_util.get_trainable_vars("bdq")
-
+                print("trainable vars", self.params)
                 # Initialize the parameters and copy them to the target network.
                 tf_util.initialize(self.sess)
                 self.update_target(sess=self.sess)
@@ -197,10 +198,19 @@ class BDQ(OffPolicyRLModel):
                 assert not self.prioritized_replay, "Prioritized replay buffer is not supported by HER"
                 self.replay_buffer = replay_wrapper(self.replay_buffer)
 
-            # Create the schedule for exploration starting from 1.
-            self.exploration = LinearSchedule(schedule_timesteps=int(self.exploration_fraction * total_timesteps),
-                                              initial_p=self.exploration_initial_eps,
-                                              final_p=self.exploration_final_eps)
+
+            if self.epsilon_greedy:
+                approximate_num_iters = 2e6 / 4
+                exploration = PiecewiseSchedule([(0, 1.0),
+                                                (approximate_num_iters / 50, 0.1), 
+                                                (approximate_num_iters / 5, 0.01) 
+                                                ], outside_value=0.01)
+            else:
+                # Create the schedule for exploration starting from 1.
+                self.exploration = LinearSchedule(schedule_timesteps=int(
+                                                  self.exploration_fraction * total_timesteps),
+                                                  initial_p=self.exploration_initial_eps,
+                                                  final_p=self.exploration_final_eps)
 
             episode_rewards = [0.0]
             episode_successes = []
@@ -236,7 +246,7 @@ class BDQ(OffPolicyRLModel):
                     self.num_timesteps
                     # action = self.act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
                     # print("time step {} and update eps {}".format(self.num_timesteps, update_eps))
-                    action_idxes = np.array(self.act(np.array(obs)[None], update_eps=update_eps, **kwargs))[0] #update_eps=exploration.value(t)))
+                    action_idxes = np.array(self.act(np.array(obs)[None], update_eps=update_eps, **kwargs)) #update_eps=exploration.value(t)))
                     action = action_idxes / self.num_action_grains * self.actions_range + self.low
                 env_action = action
                 reset = False
