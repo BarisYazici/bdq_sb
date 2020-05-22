@@ -368,7 +368,7 @@ def dqn_build_train(q_func, ob_space, ac_space, optimizer, sess, grad_norm_clipp
         # q network evaluation
         with tf.variable_scope("step_model", reuse=True, custom_getter=tf_util.outer_scope_getter("step_model")):
             step_model = q_func(sess, ob_space, ac_space, 1, 1, None, reuse=True, obs_phs=obs_phs)
-        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/bdq")
+        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/model")
         # target q network evaluation
         with tf.variable_scope("target_q_func", reuse=False):
             target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, reuse=False)
@@ -481,8 +481,8 @@ def minimize_and_clip(optimizer, objective, var_list, total_n_streams, clip_val=
                 gradients[i] = (grad, var)
     return optimizer.apply_gradients(gradients)
 
-def build_act(q_func, ob_space, ac_space, sess,
-              num_actions, num_action_streams, scope="bdq", reuse=None):
+def build_act(q_func, ob_space, ac_space, sess, num_actions, 
+              num_action_streams, stochastic_ph, update_eps_ph):
     """Creates the act function:
 
     Parameters
@@ -514,39 +514,39 @@ def build_act(q_func, ob_space, ac_space, sess,
         function to select an action given observation.
 `       See the top of the file for details.
     """
-    with tf.variable_scope(scope, reuse=reuse):
-        policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
-        print("actor q_function", policy.q_values)
-        obs_phs = (policy.obs_ph, policy.processed_obs)
+    eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
 
-        # observations_ph = tf_util.ensure_tf_input(make_obs_ph(ob_space,"observation"))
-        stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic") 
-        update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
-        eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
-        # q_values = q_func(observations_ph.get(), sess, ob_space, ac_space, 1, 1, None,
-        #                   num_actions, scope="q_func")
-        # q_values = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
-        assert (num_action_streams >= 1), "number of action branches is not acceptable, has to be >=1"
+    policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions)
+    print("actor q_function", policy.q_values)
+    obs_phs = (policy.obs_ph, policy.processed_obs)
 
-        # TODO better: enable non-uniform number of sub-actions per joint
-        num_actions_pad = num_actions//num_action_streams # number of sub-actions per action dimension
+    # observations_ph = tf_util.ensure_tf_input(make_obs_ph(ob_space,"observation"))
+    # stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic") 
+    # update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
+    # q_values = q_func(observations_ph.get(), sess, ob_space, ac_space, 1, 1, None,
+    #                   num_actions, scope="q_func")
+    # q_values = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
+    assert (num_action_streams >= 1), "number of action branches is not acceptable, has to be >=1"
 
-        output_actions = []
-        for dim in range(num_action_streams):
-            q_values_batch = policy.q_values[dim][0] # TODO better: does not allow evaluating actions over a whole batch
-            deterministic_action = tf.argmax(q_values_batch)
-            random_action = tf.random_uniform([], minval=0, maxval=num_actions//num_action_streams, dtype=tf.int64)
-            chose_random = tf.random_uniform([], minval=0, maxval=1, dtype=tf.float32) < eps
-            stochastic_action = tf.cond(chose_random, lambda: random_action, lambda: deterministic_action)
-            output_action = tf.cond(stochastic_ph, lambda: stochastic_action, lambda: deterministic_action)
-            output_actions.append(output_action)
+    # TODO better: enable non-uniform number of sub-actions per joint
+    num_actions_pad = num_actions//num_action_streams # number of sub-actions per action dimension
 
-        update_eps_expr = eps.assign(tf.cond(update_eps_ph >= 0, lambda: update_eps_ph, lambda: eps)) 
+    output_actions = []
+    for dim in range(num_action_streams):
+        q_values_batch = policy.q_values[dim][0] # TODO better: does not allow evaluating actions over a whole batch
+        deterministic_action = tf.argmax(q_values_batch)
+        random_action = tf.random_uniform([], minval=0, maxval=num_actions//num_action_streams, dtype=tf.int64)
+        chose_random = tf.random_uniform([], minval=0, maxval=1, dtype=tf.float32) < eps
+        stochastic_action = tf.cond(chose_random, lambda: random_action, lambda: deterministic_action)
+        output_action = tf.cond(stochastic_ph, lambda: stochastic_action, lambda: deterministic_action)
+        output_actions.append(output_action)
 
-        _act = tf_util.function(inputs=[policy.obs_ph, stochastic_ph, update_eps_ph],
-                                outputs=output_actions,
-                                givens={update_eps_ph: -1.0, stochastic_ph: True},
-                                updates=[update_eps_expr])
+    update_eps_expr = eps.assign(tf.cond(update_eps_ph >= 0, lambda: update_eps_ph, lambda: eps)) 
+
+    _act = tf_util.function(inputs=[policy.obs_ph, stochastic_ph, update_eps_ph],
+                            outputs=output_actions,
+                            givens={update_eps_ph: -1.0, stochastic_ph: True},
+                            updates=[update_eps_expr])
 
     def act(obs, stochastic=True, update_eps=-1):
         return _act(obs, stochastic, update_eps)
@@ -615,35 +615,33 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
 
     assert independent and losses_version == 4 or not independent, 'independent needs to be used along with loss v4'
     assert independent and target_version == "indep" or not independent, 'independent needs to be used along with independent TD targets'
+    
+    with tf.variable_scope("input", reuse=reuse):
+        stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic")
+        update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
 
-    act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess,
-                                num_actions, num_action_streams, scope=scope, reuse=reuse)
 
     with tf.variable_scope(scope, reuse=reuse):
-
+        act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess,
+                                   num_actions, num_action_streams, stochastic_ph, update_eps_ph)
         # Set up placeholders
         # obs_phs = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_t"))
         # print(num_action_streams)
-        act_t_ph = tf.placeholder(tf.int32, [None, num_action_streams], name="action")
-        rew_t_ph = tf.placeholder(tf.float32, [None], name="reward")
-        # obs_tp1_input = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_tp1"))
-        done_mask_ph = tf.placeholder(tf.float32, [None], name="done")
-        importance_weights_ph = tf.placeholder(tf.float32, [None], name="weight")
 
         # Q-network evaluation
-        # with tf.variable_scope("q_func", reuse=True, custom_getter=tf_util.outer_scope_getter("q_func")):
-        step_model = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, 
-                            scope="q_func", reuse=True, obs_phs=obs_phs) # reuse parameters from act
+        with tf.variable_scope("step_model", reuse=True, custom_getter=tf_util.outer_scope_getter("step_model")):
+            step_model = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, 
+                                reuse=True, obs_phs=obs_phs) # reuse parameters from act
             # q_t = q_func(obs_phs.get(), num_actions, scope="q_func", reuse=True) # reuse parameters from act
         # q_func_vars = U.scope_vars(U.absolute_scope_name("q_func"))
-        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/q_func")
+        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/model")
         print("q_function to optimize", step_model.q_values)
         print("qfunction parameters", q_func_vars)
         # Target Q-network evalution
 
-        # with tf.variable_scope("target_q_func", reuse=False):
-        target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, 
-                               num_actions, scope="target_q_func", reuse=False)
+        with tf.variable_scope("target_q_func", reuse=False):
+            target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, 
+                                num_actions, reuse=False)
         target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                             scope=tf.get_variable_scope().name + "/target_q_func")
         print("target q_func", target_policy.q_values)
@@ -653,12 +651,12 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
         # double_q_values = None
         double_obs_ph = target_policy.obs_ph
         if double_q: 
-            # with tf.variable_scope("q_func", reuse=True, custom_getter=tf_util.outer_scope_getter("q_func")):
-            # selection_q_tp1 = q_func(obs_tp1_input, num_actions, scope="q_func", reuse=True)
-            selection_q_tp1 = q_func(sess, ob_space, ac_space, 1, 1, None,
-                                     num_actions, scope="q_func", reuse=True)
-            # double_q_values = selection_q_tp1.q_values
-            double_obs_ph = selection_q_tp1.obs_ph
+            with tf.variable_scope("q_func", reuse=True, custom_getter=tf_util.outer_scope_getter("q_func")):
+                # selection_q_tp1 = q_func(obs_tp1_input, num_actions, scope="q_func", reuse=True)
+                selection_q_tp1 = q_func(sess, ob_space, ac_space, 1, 1, None,
+                                        num_actions, reuse=True)
+                # double_q_values = selection_q_tp1.q_values
+                double_obs_ph = selection_q_tp1.obs_ph
         else: 
             # selection_q_tp1 = q_tp1
             selection_q_tp1 = target_policy
@@ -667,6 +665,12 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
         num_actions_pad = num_actions//num_action_streams  
     
     with tf.variable_scope("loss", reuse=reuse):
+        act_t_ph = tf.placeholder(tf.int32, [None, num_action_streams], name="action")
+        rew_t_ph = tf.placeholder(tf.float32, [None], name="reward")
+        # obs_tp1_input = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_tp1"))
+        done_mask_ph = tf.placeholder(tf.float32, [None], name="done")
+        importance_weights_ph = tf.placeholder(tf.float32, [None], name="weight")
+
         q_values = []
         for dim in range(num_action_streams):
             selected_a = tf.squeeze(tf.slice(act_t_ph, [0, dim], [batch_size, 1])) # TODO better?
@@ -769,17 +773,17 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
             update_target_expr.append(var_target.assign(var))
         update_target_expr = tf.group(*update_target_expr)
 
-        with tf.variable_scope("input_info", reuse=False):
-            tf.summary.scalar('rewards', tf.reduce_mean(rew_t_ph))
-            tf.summary.scalar('importance_weights', tf.reduce_mean(importance_weights_ph))
+    with tf.variable_scope("input_info", reuse=False):
+        tf.summary.scalar('rewards', tf.reduce_mean(rew_t_ph))
+        tf.summary.scalar('importance_weights', tf.reduce_mean(importance_weights_ph))
 
-            if full_tensorboard_log:
-                tf.summary.histogram('rewards', rew_t_ph)
-                tf.summary.histogram('importance_weights', importance_weights_ph)
-                if tf_util.is_image(obs_phs[0]):
-                    tf.summary.image('observation', obs_phs[0])
-                elif len(obs_phs[0].shape) == 1:
-                    tf.summary.histogram('observation', obs_phs[0])
+        if full_tensorboard_log:
+            tf.summary.histogram('rewards', rew_t_ph)
+            tf.summary.histogram('importance_weights', importance_weights_ph)
+            if tf_util.is_image(obs_phs[0]):
+                tf.summary.image('observation', obs_phs[0])
+            elif len(obs_phs[0].shape) == 1:
+                tf.summary.histogram('observation', obs_phs[0])
 
         # optimize_expr = optimizer.apply_gradients(gradients)
 

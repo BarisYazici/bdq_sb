@@ -159,7 +159,7 @@ class FeedForwardPolicy(BDQPolicy):
 class ActionBranching(BDQPolicy):
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, 
-                 num_actions, scope, distributed_single_stream=False, aggregator='reduceLocalMean',
+                 num_actions, distributed_single_stream=False, aggregator='reduceLocalMean',
                  reuse=False, layers=None, cnn_extractor=nature_cnn, feature_extraction="cnn", 
                  obs_phs=None, layer_norm=False, dueling=True, act_fun=tf.nn.relu):
 
@@ -170,7 +170,7 @@ class ActionBranching(BDQPolicy):
         hiddens_actions=[128]
         hiddens_value=[128]
         self.num_action_branches = self.ac_space.shape[0]
-        with tf.variable_scope(scope, reuse=reuse):
+        with tf.variable_scope("model", reuse=reuse):
             out = tf.layers.flatten(self.processed_obs)
             # out = self.processed_obs
             # out = inpt
