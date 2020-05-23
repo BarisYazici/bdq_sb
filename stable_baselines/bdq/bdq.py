@@ -7,7 +7,7 @@ import gym
 from stable_baselines import logger
 from stable_baselines.common import tf_util, OffPolicyRLModel, SetVerbosity, TensorboardWriter
 from stable_baselines.common.vec_env import VecEnv
-from stable_baselines.common.schedules import LinearSchedule, PiecewiseSchedule
+from stable_baselines.common.schedules import LinearSchedule, PiecewiseSchedule, ConstantSchedule
 from stable_baselines.bdq.build_graph import build_train
 from stable_baselines.bdq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 from stable_baselines.bdq.policies import BDQPolicy, ActionBranching
@@ -59,7 +59,7 @@ class BDQ(OffPolicyRLModel):
         If None, the number of cpu of the current machine will be used.
     """
     def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, buffer_size=50000, epsilon_greedy=True, 
-                 timesteps_std=1e6, initial_std=0.4, final_std=0.05, exploration_fraction=0.1, exploration_final_eps=0.02, exploration_initial_eps=1.0,
+                 timesteps_std=1e6, initial_std=0.4, final_std=0.05, exploration_fraction=0.5, exploration_final_eps=0.02, exploration_initial_eps=1.0,
                  train_freq=1, batch_size=32, double_q=True, learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6, param_noise=False, n_cpu_tf_sess=None, verbose=0, tensorboard_log=None,
@@ -88,6 +88,9 @@ class BDQ(OffPolicyRLModel):
         self.full_tensorboard_log = full_tensorboard_log
         self.double_q = double_q
         self.epsilon_greedy = epsilon_greedy
+        self.timesteps_std = timesteps_std
+        self.initial_std = initial_std
+        self.final_std = final_std
 
         self.graph = None
         self.sess = None
@@ -200,15 +203,18 @@ class BDQ(OffPolicyRLModel):
 
             if self.epsilon_greedy:
                 approximate_num_iters = 2e6 / 4
-                self.exploration = PiecewiseSchedule([(0, 1.0),
-                                                (approximate_num_iters / 50, 0.1), 
-                                                (approximate_num_iters / 5, 0.01) 
-                                                ], outside_value=0.01)
+                # self.exploration = PiecewiseSchedule([(0, 1.0),
+                #                                 (approximate_num_iters / 50, 0.1), 
+                #                                 (approximate_num_iters / 5, 0.01) 
+                #                                 ], outside_value=0.01)
+                self.exploration = LinearSchedule(schedule_timesteps=int(self.exploration_fraction * total_timesteps),
+                                                  initial_p=self.exploration_initial_eps,
+                                                  final_p=self.exploration_final_eps)
             else:
                 self.exploration = ConstantSchedule(value=0.0) # greedy policy
-                std_schedule = LinearSchedule(schedule_timesteps=timesteps_std,
-                                            initial_p=initial_std,
-                                            final_p=final_std)
+                std_schedule = LinearSchedule(schedule_timesteps=self.timesteps_std,
+                                              initial_p=self.initial_std,
+                                              final_p=self.final_std)
 
             episode_rewards = [0.0]
             episode_successes = []
@@ -217,7 +223,7 @@ class BDQ(OffPolicyRLModel):
             self.episode_reward = np.zeros((1,))
 
             for _ in range(total_timesteps):
-                # self.env.render()
+                self.env.render()
                 if callback is not None:
                     # Only stop training if return value is False, not when it is None. This is for backwards
                     # compatibility with callbacks that have no return statement.
@@ -255,7 +261,7 @@ class BDQ(OffPolicyRLModel):
                         out_of_range_action = True 
                         while out_of_range_action:
                             # Sample from a Gaussian with mean at the greedy action and a std following a schedule of choice  
-                            a_stoch = np.random.normal(loc=a_greedy, scale=std_schedule.value(t))
+                            a_stoch = np.random.normal(loc=a_greedy, scale=std_schedule.value(self.num_timesteps))
 
                             # Convert sampled cont action to an action idx
                             a_idx_stoch = np.rint((a_stoch + self.high[index]) / self.actions_range[index] * self.num_action_grains)
