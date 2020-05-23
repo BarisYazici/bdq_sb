@@ -629,7 +629,6 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
     with tf.variable_scope("input_info", reuse=False):
         tf.summary.scalar('rewards', tf.reduce_mean(rew_t_ph))
         tf.summary.scalar('importance_weights', tf.reduce_mean(importance_weights_ph))
-        tf.summary.scalar('action indexes', act_t_ph)
 
         if full_tensorboard_log:
             tf.summary.histogram('rewards', rew_t_ph)
