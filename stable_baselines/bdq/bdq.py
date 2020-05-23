@@ -58,7 +58,7 @@ class BDQ(OffPolicyRLModel):
     :param n_cpu_tf_sess: (int) The number of threads for TensorFlow operations
         If None, the number of cpu of the current machine will be used.
     """
-    def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, buffer_size=50000, epsilon_greedy=False,
+    def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, buffer_size=50000, epsilon_greedy=True,
                  exploration_fraction=0.1,  exploration_final_eps=0.02, exploration_initial_eps=1.0, train_freq=1, 
                  batch_size=32, double_q=True, learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
@@ -205,11 +205,10 @@ class BDQ(OffPolicyRLModel):
                                                 (approximate_num_iters / 5, 0.01) 
                                                 ], outside_value=0.01)
             else:
-                # Create the schedule for exploration starting from 1.
-                self.exploration = LinearSchedule(schedule_timesteps=int(
-                                                  self.exploration_fraction * total_timesteps),
-                                                  initial_p=self.exploration_initial_eps,
-                                                  final_p=self.exploration_final_eps)
+                self.exploration = ConstantSchedule(value=0.0) # greedy policy
+                std_schedule = LinearSchedule(schedule_timesteps=timesteps_std,
+                                            initial_p=initial_std,
+                                            final_p=final_std)
 
             episode_rewards = [0.0]
             episode_successes = []
@@ -246,11 +245,33 @@ class BDQ(OffPolicyRLModel):
                     # print("time step {} and update eps {}".format(self.num_timesteps, update_eps))
                     action_idxes = np.array(self.act(np.array(obs)[None], update_eps=update_eps, **kwargs)) #update_eps=exploration.value(t)))
                     action = action_idxes / self.num_action_grains * self.actions_range + self.low
+                
+                if not self.epsilon_greedy: # Gaussian noise
+                    actions_greedy = action
+                    action_idx_stoch = []
+                    action = []
+                    for index in range(len(actions_greedy)): 
+                        a_greedy = actions_greedy[index]
+                        out_of_range_action = True 
+                        while out_of_range_action:
+                            # Sample from a Gaussian with mean at the greedy action and a std following a schedule of choice  
+                            a_stoch = np.random.normal(loc=a_greedy, scale=std_schedule.value(t))
+
+                            # Convert sampled cont action to an action idx
+                            a_idx_stoch = np.rint((a_stoch + self.high[index]) / self.actions_range[index] * self.num_action_grains)
+
+                            # Check if action is in range
+                            if a_idx_stoch >= 0 and a_idx_stoch < self.num_actions_pad:
+                                action_idx_stoch.append(a_idx_stoch)
+                                action.append(a_stoch)
+                                out_of_range_action = False
+
+                    action_idxes = action_idx_stoch
                 env_action = action
                 reset = False
                 new_obs, rew, done, info = self.env.step(env_action)
                 # Store transition in the replay buffer.
-                self.replay_buffer.add(obs, action, rew, new_obs, float(done))
+                self.replay_buffer.add(obs, action_idxes, rew, new_obs, float(done))
                 obs = new_obs
 
                 if writer is not None:
@@ -287,7 +308,6 @@ class BDQ(OffPolicyRLModel):
                         obses_t, actions, rewards, obses_tp1, dones = self.replay_buffer.sample(self.batch_size)
                         weights, batch_idxes = np.ones_like(rewards), None
                     # pytype:enable=bad-unpacking
-
                     if writer is not None:
                         # run loss backprop with summary, but once every 100 steps save the metadata
                         # (memory, compute time, ...)
