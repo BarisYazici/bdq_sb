@@ -59,7 +59,7 @@ class BDQ(OffPolicyRLModel):
         If None, the number of cpu of the current machine will be used.
     """
     def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, buffer_size=50000, epsilon_greedy=True, 
-                 timesteps_std=1e6, initial_std=0.4, final_std=0.05, exploration_fraction=0.5, exploration_final_eps=0.02, exploration_initial_eps=1.0,
+                 timesteps_std=1e6, initial_std=0.4, final_std=0.05, exploration_fraction=0.1, exploration_final_eps=0.02, exploration_initial_eps=1.0,
                  train_freq=1, batch_size=32, double_q=True, learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6, param_noise=False, n_cpu_tf_sess=None, verbose=0, tensorboard_log=None,
@@ -108,11 +108,7 @@ class BDQ(OffPolicyRLModel):
         # BDQ pars
         self.num_actions_pad = num_actions_pad
         self.num_action_grains = num_actions_pad - 1
-        self.num_action_streams = env.action_space.shape[0] 
-        self.num_actions = num_actions_pad*self.num_action_streams # total numb network outputs for action branching with one action dimension per branch
-        self.low = env.action_space.low 
-        self.high = env.action_space.high 
-        self.actions_range = np.subtract(self.high, self.low)
+
 
         if _init_setup_model:
             self.setup_model()
@@ -122,8 +118,14 @@ class BDQ(OffPolicyRLModel):
         return policy.obs_ph, tf.placeholder(tf.int32, [None]), policy.q_values
 
     def setup_model(self):
-
         with SetVerbosity(self.verbose):
+
+            self.num_action_streams = self.action_space.shape[0] 
+            self.num_actions = self.num_actions_pad*self.num_action_streams # total numb network outputs for action branching with one action dimension per branch
+            self.low = self.action_space.low 
+            self.high = self.action_space.high 
+            self.actions_range = np.subtract(self.high, self.low)
+
             if issubclass(self.policy, ActionBranching): self.bdq = True
 
             # BDQ allows continous output x
@@ -147,17 +149,14 @@ class BDQ(OffPolicyRLModel):
                 # optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
 
                 self.act, self._train_step, self.update_target, self.step_model = build_train(
-                    # make_obs_ph=make_obs_ph,
                     q_func=partial(self.policy, **self.policy_kwargs),
                     ob_space=self.observation_space,
                     ac_space=self.action_space,
-                    # optimizer=optimizer,
                     num_actions=self.num_actions,
                     num_action_streams=self.num_action_streams,
                     batch_size=self.batch_size,
                     gamma=self.gamma,
                     grad_norm_clipping=10,
-                    # param_noise=self.param_noise,
                     optimizer_name="Adam",
                     learning_rate=self.learning_rate,
                     sess=self.sess,
@@ -424,6 +423,8 @@ class BDQ(OffPolicyRLModel):
         data = {
             "double_q": self.double_q,
             "param_noise": self.param_noise,
+            "num_actions_pad": self.num_actions_pad,
+            "epsilon_greedy": self.epsilon_greedy, 
             "learning_starts": self.learning_starts,
             "train_freq": self.train_freq,
             "prioritized_replay": self.prioritized_replay,

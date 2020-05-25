@@ -160,15 +160,19 @@ class ActionBranching(BDQPolicy):
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, 
                  num_actions, distributed_single_stream=False, aggregator='reduceLocalMean',
-                 reuse=False, layers=None, cnn_extractor=nature_cnn, feature_extraction="cnn", 
+                 reuse=False, layers=None, cnn_extractor=nature_cnn, feature_extraction="mlp", 
                  obs_phs=None, layer_norm=False, dueling=True, act_fun=tf.nn.relu):
 
         super(ActionBranching, self).__init__(sess, ob_space, ac_space, n_env, n_steps,
                                         n_batch, dueling=dueling, reuse=reuse,
-                                        scale=(feature_extraction == "cnn"), obs_phs=obs_phs)
-        hiddens_common=[512, 256]
-        hiddens_actions=[128]
-        hiddens_value=[128]
+                                        scale=(feature_extraction == "mlp"), obs_phs=obs_phs)
+        # hiddens_common=[512, 256]
+        # hiddens_actions=[128]
+        # hiddens_value=[128]
+        hiddens_common=[64]
+        hiddens_actions=[64]
+        hiddens_value=[64]
+        
         self.num_action_branches = self.ac_space.shape[0]
         with tf.variable_scope("model", reuse=reuse):
             out = tf.layers.flatten(self.processed_obs)
@@ -189,7 +193,10 @@ class ActionBranching(BDQPolicy):
             with tf.variable_scope('common_net'):
                 # if not independent:
                 for hidden in hiddens_common:
-                    out = tf_layers.fully_connected(out, num_outputs=hidden, activation_fn=tf.nn.relu)
+                    out = tf_layers.fully_connected(out, num_outputs=hidden, activation_fn=None)#activation_fn=tf.nn.relu)
+                    if layer_norm:
+                        out = tf_layers.layer_norm(out, center=True, scale=True)
+                    out = act_fun(out)
                 # else: 
                 #     if hiddens_common != []:
                 #         total_indep_common_out = []
@@ -210,7 +217,11 @@ class ActionBranching(BDQPolicy):
                     for action_stream in range(self.num_action_branches):
                         action_out = out
                         for hidden in hiddens_actions:
-                            action_out = tf_layers.fully_connected(action_out, num_outputs=hidden, activation_fn=tf.nn.relu)    
+                            action_out = tf_layers.fully_connected(action_out, num_outputs=hidden, activation_fn=None)#activation_fn=tf.nn.relu)
+                            if layer_norm:
+                                action_out = tf_layers.layer_norm(action_out, center=True, scale=True)
+                            action_out = act_fun(action_out)
+
                         action_scores = tf_layers.fully_connected(action_out, num_outputs=num_actions//self.num_action_branches, activation_fn=None)
                         if aggregator == 'reduceLocalMean':
                             assert dueling, 'aggregation only needed for dueling architectures'
@@ -222,40 +233,43 @@ class ActionBranching(BDQPolicy):
                             total_action_scores.append(action_scores - tf.expand_dims(action_scores_max, 1))
                         else:
                             total_action_scores.append(action_scores)
-                elif distributed_single_stream: # TODO better: implementation of single-stream case
-                    action_out = out
-                    for hidden in hiddens_actions:
-                        action_out = tf_layers.fully_connected(action_out, num_outputs=hidden, activation_fn=tf.nn.relu)    
-                    action_scores = tf_layers.fully_connected(action_out, num_outputs=num_actions, activation_fn=None)
-                    if aggregator == 'reduceLocalMean':
-                        assert dueling, 'aggregation only needed for dueling architectures' 
-                        total_action_scores = []
-                        for action_stream in range(self.num_action_branches):
-                            # Slice action values (or advantages) of each action dimension and locally subtract their mean
-                            sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*num_actions//self.num_action_branches], [-1,num_actions//self.num_action_branches])
-                            sliced_actions_mean = tf.reduce_mean(sliced_actions_of_dim, 1)
-                            sliced_actions_centered = sliced_actions_of_dim - tf.expand_dims(sliced_actions_mean, 1)
-                            total_action_scores.append(sliced_actions_centered)
-                    elif aggregator == 'reduceLocalMax':
-                        assert dueling, 'aggregation only needed for dueling architectures'
-                        total_action_scores = []
-                        for action_stream in range(self.num_action_branches):
-                            # Slice action values (or advantages) of each action dimension and locally subtract their max
-                            sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*num_actions//self.num_action_branches], [-1,num_actions//self.num_action_branches])
-                            sliced_actions_max = tf.reduce_max(sliced_actions_of_dim, 1)
-                            sliced_actions_centered = sliced_actions_of_dim - tf.expand_dims(sliced_actions_max, 1)
-                            total_action_scores.append(sliced_actions_centered)
-                    else:             
-                        total_action_scores = action_scores
-            
+                # elif distributed_single_stream: # TODO better: implementation of single-stream case
+                #     action_out = out
+                #     for hidden in hiddens_actions:
+                #         action_out = tf_layers.fully_connected(action_out, num_outputs=hidden, activation_fn=tf.nn.relu)    
+                #     action_scores = tf_layers.fully_connected(action_out, num_outputs=num_actions, activation_fn=None)
+                #     if aggregator == 'reduceLocalMean':
+                #         assert dueling, 'aggregation only needed for dueling architectures' 
+                #         total_action_scores = []
+                #         for action_stream in range(self.num_action_branches):
+                #             # Slice action values (or advantages) of each action dimension and locally subtract their mean
+                #             sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*num_actions//self.num_action_branches], [-1,num_actions//self.num_action_branches])
+                #             sliced_actions_mean = tf.reduce_mean(sliced_actions_of_dim, 1)
+                #             sliced_actions_centered = sliced_actions_of_dim - tf.expand_dims(sliced_actions_mean, 1)
+                #             total_action_scores.append(sliced_actions_centered)
+                #     elif aggregator == 'reduceLocalMax':
+                #         assert dueling, 'aggregation only needed for dueling architectures'
+                #         total_action_scores = []
+                #         for action_stream in range(self.num_action_branches):
+                #             # Slice action values (or advantages) of each action dimension and locally subtract their max
+                #             sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*num_actions//self.num_action_branches], [-1,num_actions//self.num_action_branches])
+                #             sliced_actions_max = tf.reduce_max(sliced_actions_of_dim, 1)
+                #             sliced_actions_centered = sliced_actions_of_dim - tf.expand_dims(sliced_actions_max, 1)
+                #             total_action_scores.append(sliced_actions_centered)
+                #     else:             
+                #         total_action_scores = action_scores
+
             if dueling: # create a separate state-value branch
                 # if not independent: 
                 with tf.variable_scope('state_value'):
                     state_out = out
                     for hidden in hiddens_value:
-                        state_out = tf_layers.fully_connected(state_out, num_outputs=hidden, activation_fn=tf.nn.relu)
+                        state_out = tf_layers.fully_connected(state_out, num_outputs=hidden, activation_fn=None)#activation_fn=tf.nn.relu)
+                        if layer_norm:
+                            state_out = tf_layers.layer_norm(state_out, center=True, scale=True)
+                        state_out = act_fun(state_out)
                     state_score = tf_layers.fully_connected(state_out, num_outputs=1, activation_fn=None)
-                if aggregator == 'reduceLocalMean': 
+                if aggregator == 'reduceLocalMean':
                     # Local centering wrt branch's mean value has already been done
                     action_scores_adjusted = total_action_scores
                 elif aggregator == 'reduceGlobalMean': 
@@ -299,6 +313,32 @@ class ActionBranching(BDQPolicy):
 
     def proba_step(self, obs, state=None, mask=None):
         return self.sess.run(self.policy_proba, {self.obs_ph: obs})
+
+class LnMlpActPolicy(ActionBranching):
+    """
+    Policy object that implements DQN policy, using a MLP (2 layers of 64), with layer normalisation
+
+    :param sess: (TensorFlow session) The current TensorFlow session
+    :param ob_space: (Gym Space) The observation space of the environment
+    :param ac_space: (Gym Space) The action space of the environment
+    :param n_env: (int) The number of environments to run
+    :param n_steps: (int) The number of steps to run for each environment
+    :param n_batch: (int) The number of batch to run (n_envs * n_steps)
+    :param reuse: (bool) If the policy is reusable or not
+    :param obs_phs: (TensorFlow Tensor, TensorFlow Tensor) a tuple containing an override for observation placeholder
+        and the processed observation placeholder respectively
+    :param dueling: (bool) if true double the output MLP to compute a baseline for action scores
+    :param _kwargs: (dict) Extra keyword arguments for the nature CNN feature extraction
+    """
+
+    def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, num_actions,
+                 reuse=False, obs_phs=None, dueling=True, **_kwargs):
+        super(LnMlpActPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, 
+                                            num_actions, reuse, aggregator='reduceLocalMean', 
+                                            feature_extraction="mlp", obs_phs=obs_phs,
+                                            reuse=False, layers=None, layer_norm=True,
+                                            dueling=True, **_kwargs)
+
 
 class CnnPolicy(FeedForwardPolicy):
     """
