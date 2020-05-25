@@ -221,7 +221,6 @@ class ActionBranching(BDQPolicy):
                             if layer_norm:
                                 action_out = tf_layers.layer_norm(action_out, center=True, scale=True)
                             action_out = act_fun(action_out)
-
                         action_scores = tf_layers.fully_connected(action_out, num_outputs=num_actions//self.num_action_branches, activation_fn=None)
                         if aggregator == 'reduceLocalMean':
                             assert dueling, 'aggregation only needed for dueling architectures'
@@ -330,13 +329,13 @@ class LnMlpActPolicy(ActionBranching):
     :param dueling: (bool) if true double the output MLP to compute a baseline for action scores
     :param _kwargs: (dict) Extra keyword arguments for the nature CNN feature extraction
     """
-
-    def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, num_actions,
-                 reuse=False, obs_phs=None, dueling=True, **_kwargs):
+    def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch,
+                 num_actions, distributed_single_stream=False, reuse=False, 
+                 obs_phs=None, dueling=True, **_kwargs):
         super(LnMlpActPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, 
-                                            num_actions, reuse, aggregator='reduceLocalMean', 
-                                            feature_extraction="mlp", obs_phs=obs_phs,
-                                            reuse=False, layers=None, layer_norm=True,
+                                            num_actions, distributed_single_stream=distributed_single_stream, reuse=reuse,
+                                            aggregator='reduceLocalMean', feature_extraction="mlp", obs_phs=obs_phs,
+                                            layers=None, layer_norm=True,
                                             dueling=True, **_kwargs)
 
 

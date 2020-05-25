@@ -109,7 +109,6 @@ class BDQ(OffPolicyRLModel):
         self.num_actions_pad = num_actions_pad
         self.num_action_grains = num_actions_pad - 1
 
-
         if _init_setup_model:
             self.setup_model()
 
