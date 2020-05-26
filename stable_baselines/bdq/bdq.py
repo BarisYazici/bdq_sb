@@ -58,7 +58,7 @@ class BDQ(OffPolicyRLModel):
     :param n_cpu_tf_sess: (int) The number of threads for TensorFlow operations
         If None, the number of cpu of the current machine will be used.
     """
-    def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, buffer_size=50000, epsilon_greedy=True, 
+    def __init__(self, policy, env, num_actions_pad=33, gamma=0.99, learning_rate=5e-4, grad_norm_clipping=10, buffer_size=0000, epsilon_greedy=True, 
                  timesteps_std=1e6, initial_std=0.4, final_std=0.05, exploration_fraction=0.1, exploration_final_eps=0.02, exploration_initial_eps=1.0,
                  train_freq=1, batch_size=32, double_q=True, learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
@@ -91,6 +91,7 @@ class BDQ(OffPolicyRLModel):
         self.timesteps_std = timesteps_std
         self.initial_std = initial_std
         self.final_std = final_std
+        self.grad_norm_clipping = grad_norm_clipping
 
         self.graph = None
         self.sess = None
@@ -155,7 +156,7 @@ class BDQ(OffPolicyRLModel):
                     num_action_streams=self.num_action_streams,
                     batch_size=self.batch_size,
                     gamma=self.gamma,
-                    grad_norm_clipping=10,
+                    grad_norm_clipping=self.grad_norm_clipping,
                     optimizer_name="Adam",
                     learning_rate=self.learning_rate,
                     sess=self.sess,
@@ -221,7 +222,7 @@ class BDQ(OffPolicyRLModel):
             self.episode_reward = np.zeros((1,))
 
             for _ in range(total_timesteps):
-                self.env.render()
+                # self.env.render()
                 if callback is not None:
                     # Only stop training if return value is False, not when it is None. This is for backwards
                     # compatibility with callbacks that have no return statement.
@@ -361,44 +362,28 @@ class BDQ(OffPolicyRLModel):
         return self
 
     def predict(self, observation, eval_std=0.01, state=None, mask=None, deterministic=True):
-        # observation = np.array(observation)
+        observation = np.array(observation)
         # vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
 
-        # observation = observation.reshape((-1,) + self.observation_space.shape)
-        # with self.sess.as_default():
-        #     actions, _, _ = self.step_model.step(observation, deterministic=deterministic)
+        observation = observation.reshape((-1,) + self.observation_space.shape)
         with self.sess.as_default():
-            action_idxes = np.array(self.act(np.array(observation)[None], stochastic=False)) # deterministic
-            actions_greedy = action_idxes / self.num_action_grains * self.actions_range + self.low
+            actions, _, _ = self.step_model.step(observation, eval_std=eval_std, deterministic=deterministic)
 
-        if eval_std == 0.0:
-            action = actions_greedy
-        else:
-            action = []
-            for index in range(len(actions_greedy)): 
-                a_greedy = actions_greedy[index]
-                out_of_range_action = True 
-                while out_of_range_action:
-                    a_stoch = np.random.normal(loc=a_greedy, scale=eval_std)
-                    a_idx_stoch = np.rint((a_stoch + self.high[index]) / self.actions_range[index] * self.num_action_grains)
-                    if a_idx_stoch >= 0 and a_idx_stoch < self.num_actions_pad:
-                        action.append(a_stoch)
-                        out_of_range_action = False
         # if not vectorized_env:
         #     actions = actions[0]
 
-        return action, None
+        return actions, None
 
     def action_probability(self, observation, state=None, mask=None, actions=None, logp=False):
         observation = np.array(observation)
-        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+        # vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
         actions_proba = self.proba_step(observation, state, mask)
 
         if actions is not None:  # comparing the action distribution, to given actions
             actions = np.array([actions])
-            assert isinstance(self.action_space, gym.spaces.Discrete)
+            # assert isinstance(self.action_space, gym.spaces.Discrete)
             actions = actions.reshape((-1,))
             assert observation.shape[0] == actions.shape[0], "Error: batch sizes differ for actions and observations."
             actions_proba = actions_proba[np.arange(actions.shape[0]), actions]
@@ -407,10 +392,10 @@ class BDQ(OffPolicyRLModel):
             if logp:
                 actions_proba = np.log(actions_proba)
 
-        if not vectorized_env:
-            if state is not None:
-                raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
-            actions_proba = actions_proba[0]
+        # if not vectorized_env:
+        #     if state is not None:
+        #         raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
+        #     actions_proba = actions_proba[0]
 
         return actions_proba
 

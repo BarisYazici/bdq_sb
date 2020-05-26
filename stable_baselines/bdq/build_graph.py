@@ -334,7 +334,7 @@ def minimize_and_clip(optimizer, objective, var_list, total_n_streams, clip_val=
                 gradients[i] = (grad, var)
     return optimizer.apply_gradients(gradients)
 
-def build_act(q_func, ob_space, ac_space, sess, num_actions, 
+def build_act(q_func, ob_space, ac_space, sess, num_actions,
               num_action_streams, stochastic_ph, update_eps_ph):
     """Creates the act function:
 
@@ -370,7 +370,7 @@ def build_act(q_func, ob_space, ac_space, sess, num_actions,
     eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
 
     policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions)
-    print("actor q_function", policy.q_values)
+    # print("actor q_function", policy.q_values)
     obs_phs = (policy.obs_ph, policy.processed_obs)
 
     # observations_ph = tf_util.ensure_tf_input(make_obs_ph(ob_space,"observation"))
@@ -475,8 +475,8 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
 
 
     with tf.variable_scope(scope, reuse=reuse):
-        act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess,
-                                   num_actions, num_action_streams, stochastic_ph, update_eps_ph)
+        act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess, num_actions, 
+                                   num_action_streams, stochastic_ph, update_eps_ph)
         # Set up placeholders
         # obs_phs = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_t"))
         # print(num_action_streams)
@@ -488,8 +488,8 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
             # q_t = q_func(obs_phs.get(), num_actions, scope="q_func", reuse=True) # reuse parameters from act
         # q_func_vars = U.scope_vars(U.absolute_scope_name("q_func"))
         q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/model")
-        print("q_function to optimize", step_model.q_values)
-        print("qfunction parameters", q_func_vars)
+        # print("q_function to optimize", step_model.q_values)
+        # print("qfunction parameters", q_func_vars)
         # Target Q-network evalution
 
         with tf.variable_scope("target_q_func", reuse=False):
@@ -497,8 +497,8 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
                                 num_actions, reuse=False)
         target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                             scope=tf.get_variable_scope().name + "/target_q_func")
-        print("target q_func", target_policy.q_values)
-        print("target q_func vars", target_q_func_vars)
+        # print("target q_func", target_policy.q_values)
+        # print("target q_func vars", target_q_func_vars)
         
         # compute estimate of best possible value starting from state at t + 1
         # double_q_values = None
@@ -513,7 +513,7 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
         else: 
             # selection_q_tp1 = q_tp1
             selection_q_tp1 = target_policy
-        print("double q_func", selection_q_tp1.q_values)
+        # print("double q_func", selection_q_tp1.q_values)
 
         num_actions_pad = num_actions//num_action_streams  
     

@@ -166,14 +166,17 @@ class ActionBranching(BDQPolicy):
         super(ActionBranching, self).__init__(sess, ob_space, ac_space, n_env, n_steps,
                                         n_batch, dueling=dueling, reuse=reuse,
                                         scale=(feature_extraction == "mlp"), obs_phs=obs_phs)
-        # hiddens_common=[512, 256]
-        # hiddens_actions=[128]
-        # hiddens_value=[128]
-        hiddens_common=[64]
-        hiddens_actions=[64]
-        hiddens_value=[64]
-        
+        if layers is not None:
+           [hiddens_common, hiddens_actions, hiddens_value]= layers
+        else:
+            hiddens_common=[512, 256]
+            hiddens_actions=[128]
+            hiddens_value=[128]
+        self.num_actions = num_actions
         self.num_action_branches = self.ac_space.shape[0]
+        self.num_actions_pad = num_actions//self.num_action_branches
+        self.num_action_grains = self.num_actions_pad -1
+
         with tf.variable_scope("model", reuse=reuse):
             out = tf.layers.flatten(self.processed_obs)
             # out = self.processed_obs
@@ -221,7 +224,7 @@ class ActionBranching(BDQPolicy):
                             if layer_norm:
                                 action_out = tf_layers.layer_norm(action_out, center=True, scale=True)
                             action_out = act_fun(action_out)
-                        action_scores = tf_layers.fully_connected(action_out, num_outputs=num_actions//self.num_action_branches, activation_fn=None)
+                        action_scores = tf_layers.fully_connected(action_out, num_outputs=self.num_actions//self.num_action_branches, activation_fn=None)
                         if aggregator == 'reduceLocalMean':
                             assert dueling, 'aggregation only needed for dueling architectures'
                             action_scores_mean = tf.reduce_mean(action_scores, 1)
@@ -236,13 +239,13 @@ class ActionBranching(BDQPolicy):
                 #     action_out = out
                 #     for hidden in hiddens_actions:
                 #         action_out = tf_layers.fully_connected(action_out, num_outputs=hidden, activation_fn=tf.nn.relu)    
-                #     action_scores = tf_layers.fully_connected(action_out, num_outputs=num_actions, activation_fn=None)
+                #     action_scores = tf_layers.fully_connected(action_out, num_outputs=self.num_actions, activation_fn=None)
                 #     if aggregator == 'reduceLocalMean':
                 #         assert dueling, 'aggregation only needed for dueling architectures' 
                 #         total_action_scores = []
                 #         for action_stream in range(self.num_action_branches):
                 #             # Slice action values (or advantages) of each action dimension and locally subtract their mean
-                #             sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*num_actions//self.num_action_branches], [-1,num_actions//self.num_action_branches])
+                #             sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*self.num_actions//self.num_action_branches], [-1,self.num_actions//self.num_action_branches])
                 #             sliced_actions_mean = tf.reduce_mean(sliced_actions_of_dim, 1)
                 #             sliced_actions_centered = sliced_actions_of_dim - tf.expand_dims(sliced_actions_mean, 1)
                 #             total_action_scores.append(sliced_actions_centered)
@@ -251,7 +254,7 @@ class ActionBranching(BDQPolicy):
                 #         total_action_scores = []
                 #         for action_stream in range(self.num_action_branches):
                 #             # Slice action values (or advantages) of each action dimension and locally subtract their max
-                #             sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*num_actions//self.num_action_branches], [-1,num_actions//self.num_action_branches])
+                #             sliced_actions_of_dim = tf.slice(action_scores, [0,action_stream*self.num_actions//self.num_action_branches], [-1,self.num_actions//self.num_action_branches])
                 #             sliced_actions_max = tf.reduce_max(sliced_actions_of_dim, 1)
                 #             sliced_actions_centered = sliced_actions_of_dim - tf.expand_dims(sliced_actions_max, 1)
                 #             total_action_scores.append(sliced_actions_centered)
@@ -293,22 +296,34 @@ class ActionBranching(BDQPolicy):
         self.q_values = total_action_scores
         self._setup_init()
 
-    def step(self, obs, state=None, mask=None, deterministic=True):
+    def step(self, obs, eval_std=0.01, state=None, mask=None, deterministic=True):
         q_values, actions_proba = self.sess.run([self.q_values, self.policy_proba], {self.obs_ph: obs})
-        if deterministic:
-            pass
-            # action_idxes = np.array(act(np.array(obs)[None], stochastic=False)) # deterministic
-            # actions_greedy = action_idxes / num_action_grains * actions_range + low
-            # actions = np.argmax(q_values, axis=1)
-        else:
-            # Unefficient sampling
-            # TODO: replace the loop
-            # maybe with Gumbel-max trick ? (http://amid.fish/humble-gumbel)
-            actions = np.zeros((len(obs),), dtype=np.int64)
-            for action_idx in range(len(obs)):
-                actions[action_idx] = np.random.choice(self.n_actions, p=actions_proba[action_idx])
+        
+        self.low = self.ac_space.low 
+        self.high = self.ac_space.high 
+        self.actions_range = np.subtract(self.high, self.low)
 
-        return actions, q_values, None
+        output_actions = np.array([])
+        for dim in range(self.num_action_branches):
+            q_values_batch = q_values[dim][0]
+            deterministic_action = np.argmax(q_values_batch)
+            output_actions = np.append(output_actions, deterministic_action)
+        actions_greedy = output_actions / self.num_action_grains * self.actions_range + self.low
+        if deterministic:
+            actions = actions_greedy
+        else:
+            actions = []
+            for index in range(len(actions_greedy)): 
+                a_greedy = actions_greedy[index]
+                out_of_range_action = True 
+                while out_of_range_action:
+                    a_stoch = np.random.normal(loc=a_greedy, scale=eval_std)
+                    a_idx_stoch = np.rint((a_stoch + self.high[index]) / self.actions_range[index] * self.num_action_grains)
+                    if a_idx_stoch >= 0 and a_idx_stoch < self.num_actions_pad:
+                        actions.append(a_stoch)
+                        out_of_range_action = False
+
+        return actions, q_values, actions_proba, None
 
     def proba_step(self, obs, state=None, mask=None):
         return self.sess.run(self.policy_proba, {self.obs_ph: obs})
