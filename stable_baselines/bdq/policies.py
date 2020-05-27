@@ -171,7 +171,7 @@ class ActionBranching(BDQPolicy):
         else:
             hiddens_common=[512, 256]
             hiddens_actions=[128]
-            hiddens_value=[128]
+            hiddens_value=[128] 
         self.num_actions = num_actions
         self.num_action_branches = self.ac_space.shape[0]
         self.num_actions_pad = num_actions//self.num_action_branches

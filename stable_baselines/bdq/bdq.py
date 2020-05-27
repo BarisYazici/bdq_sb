@@ -367,7 +367,7 @@ class BDQ(OffPolicyRLModel):
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
         with self.sess.as_default():
-            actions, _, _ = self.step_model.step(observation, eval_std=eval_std, deterministic=deterministic)
+            actions, _, _, _ = self.step_model.step(observation, eval_std=eval_std, deterministic=deterministic)
 
         # if not vectorized_env:
         #     actions = actions[0]
