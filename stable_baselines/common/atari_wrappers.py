@@ -119,7 +119,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
-        self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=env.observation_space.dtype)
+        self._obs_buffer = np.zeros((2,) + env.observation_space.shape, dtype=env.observation_space.dtype)
         self._skip = skip
 
     def step(self, action):
@@ -214,8 +214,8 @@ class FrameStack(gym.Wrapper):
         self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * n_frames),
                                             dtype=env.observation_space.dtype)
 
-    def reset(self):
-        obs = self.env.reset()
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
         for _ in range(self.n_frames):
             self.frames.append(obs)
         return self._get_ob()

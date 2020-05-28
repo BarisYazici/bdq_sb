@@ -2,10 +2,12 @@ import subprocess
 
 import gym
 import numpy as np
+import pytest
 
+from stable_baselines import DDPG, DQN, SAC, TD3
 from stable_baselines.common.running_mean_std import RunningMeanStd
-from stable_baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from stable_baselines.common.vec_env.vec_normalize import VecNormalize
+from stable_baselines.common.vec_env import (DummyVecEnv, VecNormalize, VecFrameStack,
+    sync_envs_normalization, unwrap_vec_normalize)
 from .test_common import _assert_eq
 
 ENV_ID = 'Pendulum-v0'
@@ -121,6 +123,55 @@ def test_normalize_external():
     obs = np.array([0, 0, 0, 0])
     norm_obs = venv.normalize_obs(obs)
     assert obs.shape == norm_obs.shape
+
+
+@pytest.mark.parametrize("model_class", [DDPG, DQN, SAC, TD3])
+def test_offpolicy_normalization(model_class):
+    if model_class == DQN:
+        env = DummyVecEnv([lambda: gym.make('CartPole-v1')])
+    else:
+        env = DummyVecEnv([make_env])
+    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10., clip_reward=10.)
+
+    model = model_class('MlpPolicy', env, verbose=1)
+    model.learn(total_timesteps=1000)
+    # Check getter
+    assert isinstance(model.get_vec_normalize_env(), VecNormalize)
+
+
+def test_sync_vec_normalize():
+    env = DummyVecEnv([make_env])
+
+    assert unwrap_vec_normalize(env) is None
+
+    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10., clip_reward=10.)
+
+    assert isinstance(unwrap_vec_normalize(env), VecNormalize)
+
+    env = VecFrameStack(env, 1)
+
+    assert isinstance(unwrap_vec_normalize(env), VecNormalize)
+
+    eval_env = DummyVecEnv([make_env])
+    eval_env = VecNormalize(eval_env, training=False, norm_obs=True, norm_reward=True, clip_obs=10., clip_reward=10.)
+    eval_env = VecFrameStack(eval_env, 1)
+
+    env.reset()
+    # Initialize running mean
+    for _ in range(100):
+        env.step([env.action_space.sample()])
+
+    obs = env.reset()
+    original_obs = env.get_original_obs()
+    dummy_rewards = np.random.rand(10)
+    # Normalization must be different
+    assert not np.allclose(obs, eval_env.normalize_obs(original_obs))
+
+    sync_envs_normalization(env, eval_env)
+
+    # Now they must be synced
+    assert np.allclose(obs, eval_env.normalize_obs(original_obs))
+    assert np.allclose(env.normalize_reward(dummy_rewards), eval_env.normalize_reward(dummy_rewards))
 
 
 def test_mpi_runningmeanstd():

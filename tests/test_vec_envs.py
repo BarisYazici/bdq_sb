@@ -92,7 +92,6 @@ def test_vecenv_custom_calls(vec_env_class, vec_env_wrapper):
     assert (env_method_subset[1] == np.ones((1, 3))).all()
     assert len(env_method_subset) == 2
 
-
     # Test to change value for all the environments
     setattr_result = vec_env.set_attr('current_step', 42, indices=None)
     getattr_result = vec_env.get_attr('current_step')

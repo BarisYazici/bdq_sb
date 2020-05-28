@@ -42,7 +42,6 @@ def test_custom_vec_env():
                        monitor_dir=monitor_dir, seed=0,
                        vec_env_cls=SubprocVecEnv, vec_env_kwargs={'start_method': None})
 
-
     assert env.num_envs == 1
     assert isinstance(env, SubprocVecEnv)
     assert os.path.isdir('logs/test_make_vec_env/')
@@ -64,9 +63,11 @@ def test_evaluate_policy():
     def dummy_callback(locals_, _globals):
         locals_['model'].n_callback_calls += 1
 
-    _, n_steps = evaluate_policy(model, model.get_env(), n_eval_episodes, deterministic=True,
-                                 render=False, callback=dummy_callback, reward_threshold=None,
-                                 return_episode_rewards=False)
+    _, episode_lengths = evaluate_policy(model, model.get_env(), n_eval_episodes, deterministic=True,
+                                         render=False, callback=dummy_callback, reward_threshold=None,
+                                         return_episode_rewards=True)
+
+    n_steps = sum(episode_lengths)
     assert n_steps == n_steps_per_episode * n_eval_episodes
     assert n_steps == model.n_callback_calls
 

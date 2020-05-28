@@ -21,6 +21,52 @@ def is_image(tensor):
     return len(tensor.shape) == 3 and tensor.shape[-1] in [1, 3, 4]
 
 
+def batch_to_seq(tensor_batch, n_batch, n_steps, flat=False):
+    """
+    Transform a batch of Tensors, into a sequence of Tensors for recurrent policies
+
+    :param tensor_batch: (TensorFlow Tensor) The input tensor to unroll
+    :param n_batch: (int) The number of batch to run (n_envs * n_steps)
+    :param n_steps: (int) The number of steps to run for each environment
+    :param flat: (bool) If the input Tensor is flat
+    :return: (TensorFlow Tensor) sequence of Tensors for recurrent policies
+    """
+    if flat:
+        tensor_batch = tf.reshape(tensor_batch, [n_batch, n_steps])
+    else:
+        tensor_batch = tf.reshape(tensor_batch, [n_batch, n_steps, -1])
+    return [tf.squeeze(v, [1]) for v in tf.split(axis=1, num_or_size_splits=n_steps, value=tensor_batch)]
+
+
+def seq_to_batch(tensor_sequence, flat=False):
+    """
+    Transform a sequence of Tensors, into a batch of Tensors for recurrent policies
+
+    :param tensor_sequence: (TensorFlow Tensor) The input tensor to batch
+    :param flat: (bool) If the input Tensor is flat
+    :return: (TensorFlow Tensor) batch of Tensors for recurrent policies
+    """
+    shape = tensor_sequence[0].get_shape().as_list()
+    if not flat:
+        assert len(shape) > 1
+        n_hidden = tensor_sequence[0].get_shape()[-1].value
+        return tf.reshape(tf.concat(axis=1, values=tensor_sequence), [-1, n_hidden])
+    else:
+        return tf.reshape(tf.stack(values=tensor_sequence, axis=1), [-1])
+
+
+def check_shape(tensors, shapes):
+    """
+    Verifies the tensors match the given shape, will raise an error if the shapes do not match
+
+    :param tensors: ([TensorFlow Tensor]) The tensors that should be checked
+    :param shapes: ([list]) The list of shapes for each tensor
+    """
+    i = 0
+    for (tensor, shape) in zip(tensors, shapes):
+        assert tensor.get_shape().as_list() == shape, "id " + str(i) + " shape " + str(tensor.get_shape()) + str(shape)
+        i += 1
+
 # ================================================================
 # Mathematical utils
 # ================================================================
@@ -38,6 +84,91 @@ def huber_loss(tensor, delta=1.0):
         tf.square(tensor) * 0.5,
         delta * (tf.abs(tensor) - 0.5 * delta)
     )
+
+
+def sample(logits):
+    """
+    Creates a sampling Tensor for non deterministic policies
+    when using categorical distribution.
+    It uses the Gumbel-max trick: http://amid.fish/humble-gumbel
+
+    :param logits: (TensorFlow Tensor) The input probability for each action
+    :return: (TensorFlow Tensor) The sampled action
+    """
+    noise = tf.random_uniform(tf.shape(logits))
+    return tf.argmax(logits - tf.log(-tf.log(noise)), 1)
+
+
+def calc_entropy(logits):
+    """
+    Calculates the entropy of the output values of the network
+
+    :param logits: (TensorFlow Tensor) The input probability for each action
+    :return: (TensorFlow Tensor) The Entropy of the output values of the network
+    """
+    # Compute softmax
+    a_0 = logits - tf.reduce_max(logits, 1, keepdims=True)
+    exp_a_0 = tf.exp(a_0)
+    z_0 = tf.reduce_sum(exp_a_0, 1, keepdims=True)
+    p_0 = exp_a_0 / z_0
+    return tf.reduce_sum(p_0 * (tf.log(z_0) - a_0), 1)
+
+
+def mse(pred, target):
+    """
+    Returns the Mean squared error between prediction and target
+
+    :param pred: (TensorFlow Tensor) The predicted value
+    :param target: (TensorFlow Tensor) The target value
+    :return: (TensorFlow Tensor) The Mean squared error between prediction and target
+    """
+    return tf.reduce_mean(tf.square(pred - target))
+
+
+def avg_norm(tensor):
+    """
+    Return an average of the L2 normalization of the batch
+
+    :param tensor: (TensorFlow Tensor) The input tensor
+    :return: (TensorFlow Tensor) Average L2 normalization of the batch
+    """
+    return tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(tensor), axis=-1)))
+
+
+def gradient_add(grad_1, grad_2, param, verbose=0):
+    """
+    Sum two gradients
+
+    :param grad_1: (TensorFlow Tensor) The first gradient
+    :param grad_2: (TensorFlow Tensor) The second gradient
+    :param param: (TensorFlow parameters) The trainable parameters
+    :param verbose: (int) verbosity level
+    :return: (TensorFlow Tensor) the sum of the gradients
+    """
+    if verbose > 1:
+        print([grad_1, grad_2, param.name])
+    if grad_1 is None and grad_2 is None:
+        return None
+    elif grad_1 is None:
+        return grad_2
+    elif grad_2 is None:
+        return grad_1
+    else:
+        return grad_1 + grad_2
+
+
+def q_explained_variance(q_pred, q_true):
+    """
+    Calculates the explained variance of the Q value
+
+    :param q_pred: (TensorFlow Tensor) The predicted Q value
+    :param q_true: (TensorFlow Tensor) The expected Q value
+    :return: (TensorFlow Tensor) the explained variance of the Q value
+    """
+    _, var_y = tf.nn.moments(q_true, axes=[0, 1])
+    _, var_pred = tf.nn.moments(q_true - q_pred, axes=[0, 1])
+    check_shape([var_y, var_pred], [[]] * 2)
+    return 1.0 - (var_pred / var_y)
 
 
 # ================================================================
@@ -167,7 +298,7 @@ class _Function(object):
         :param givens: (dict) the values known for the output
         """
         for inpt in inputs:
-            if not hasattr(inpt, 'make_feed_dict') and not (isinstance(inpt, tf.Tensor)and len(inpt.op.inputs) == 0):
+            if not hasattr(inpt, 'make_feed_dict') and not (isinstance(inpt, tf.Tensor) and len(inpt.op.inputs) == 0):
                 assert False, "inputs should all be placeholders, constants, or have a make_feed_dict method"
         self.inputs = inputs
         updates = updates or []
@@ -338,90 +469,37 @@ def outer_scope_getter(scope, new_scope=""):
     return _getter
 
 
-
 # ================================================================
-# Inputs
+# Logging
 # ================================================================
 
-def is_placeholder(x):
-    return type(x) is tf.Tensor and len(x.op.inputs) == 0
 
-class TfInput(object):
-    def __init__(self, name="(unnamed)"):
-        """Generalized Tensorflow placeholder. The main differences are:
-            - possibly uses multiple placeholders internally and returns multiple values
-            - can apply light postprocessing to the value feed to placeholder.
-        """
-        self.name = name
+def total_episode_reward_logger(rew_acc, rewards, masks, writer, steps):
+    """
+    calculates the cumulated episode reward, and prints to tensorflow log the output
 
-    def get(self):
-        """Return the tf variable(s) representing the possibly postprocessed value
-        of placeholder(s).
-        """
-        raise NotImplemented()
+    :param rew_acc: (np.array float) the total running reward
+    :param rewards: (np.array float) the rewards
+    :param masks: (np.array bool) the end of episodes
+    :param writer: (TensorFlow Session.writer) the writer to log to
+    :param steps: (int) the current timestep
+    :return: (np.array float) the updated total running reward
+    :return: (np.array float) the updated total running reward
+    """
+    with tf.variable_scope("environment_info", reuse=True):
+        for env_idx in range(rewards.shape[0]):
+            dones_idx = np.sort(np.argwhere(masks[env_idx]))
 
-    def make_feed_dict(data):
-        """Given data input it to the placeholder(s)."""
-        raise NotImplemented()
+            if len(dones_idx) == 0:
+                rew_acc[env_idx] += sum(rewards[env_idx])
+            else:
+                rew_acc[env_idx] += sum(rewards[env_idx, :dones_idx[0, 0]])
+                summary = tf.Summary(value=[tf.Summary.Value(tag="episode_reward", simple_value=rew_acc[env_idx])])
+                writer.add_summary(summary, steps + dones_idx[0, 0])
+                for k in range(1, len(dones_idx[:, 0])):
+                    rew_acc[env_idx] = sum(rewards[env_idx, dones_idx[k - 1, 0]:dones_idx[k, 0]])
+                    summary = tf.Summary(value=[tf.Summary.Value(tag="episode_reward", simple_value=rew_acc[env_idx])])
+                    writer.add_summary(summary, steps + dones_idx[k, 0])
+                rew_acc[env_idx] = sum(rewards[env_idx, dones_idx[-1, 0]:])
 
-
-class PlacholderTfInput(TfInput):
-    def __init__(self, placeholder):
-        """Wrapper for regular tensorflow placeholder."""
-        super().__init__(placeholder.name)
-        self._placeholder = placeholder
-
-    def get(self):
-        return self._placeholder
-
-    def make_feed_dict(self, data):
-        return {self._placeholder: data}
-
-
-class BatchInput(PlacholderTfInput):
-    def __init__(self, shape, dtype=tf.float32, name=None):
-        """Creates a placeholder for a batch of tensors of a given shape and dtype
-
-        Parameters
-        ----------
-        shape: [int]
-            shape of a single elemenet of the batch
-        dtype: tf.dtype
-            number representation used for tensor contents
-        name: str
-            name of the underlying placeholder
-        """
-        super().__init__(tf.placeholder(dtype, [None] + list(shape), name=name))
-
-
-class Uint8Input(PlacholderTfInput):
-    def __init__(self, shape, name=None):
-        """Takes input in uint8 format which is cast to float32 and divided by 255
-        before passing it to the model.
-
-        On GPU this ensures lower data transfer times.
-
-        Parameters
-        ----------
-        shape: [int]
-            shape of the tensor.
-        name: str
-            name of the underlying placeholder
-        """
-
-        super().__init__(tf.placeholder(tf.uint8, [None] + list(shape), name=name))
-        self._shape = shape
-        self._output = tf.cast(super().get(), tf.float32) / 255.0
-
-    def get(self):
-        return self._output
-
-
-def ensure_tf_input(thing):
-    """Takes either tf.placeholder of TfInput and outputs equivalent TfInput"""
-    if isinstance(thing, TfInput):
-        return thing
-    elif is_placeholder(thing):
-        return PlacholderTfInput(thing)
-    else:
-        raise ValueError("Must be a placeholder or TfInput")
+    return rew_acc

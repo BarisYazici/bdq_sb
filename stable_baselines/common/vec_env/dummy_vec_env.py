@@ -1,4 +1,7 @@
 from collections import OrderedDict
+from typing import Sequence
+from copy import deepcopy
+
 import numpy as np
 
 from stable_baselines.common.vec_env.base_vec_env import VecEnv
@@ -45,7 +48,13 @@ class DummyVecEnv(VecEnv):
                 obs = self.envs[env_idx].reset()
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones),
-                self.buf_infos.copy())
+                deepcopy(self.buf_infos))
+
+    def seed(self, seed=None):
+        seeds = list()
+        for idx, env in enumerate(self.envs):
+            seeds.append(env.seed(seed + idx))
+        return seeds
 
     def reset(self):
         for env_idx in range(self.num_envs):
@@ -57,10 +66,21 @@ class DummyVecEnv(VecEnv):
         for env in self.envs:
             env.close()
 
-    def get_images(self):
-        return [env.render(mode='rgb_array') for env in self.envs]
+    def get_images(self, *args, **kwargs) -> Sequence[np.ndarray]:
+        return [env.render(*args, mode='rgb_array', **kwargs) for env in self.envs]
 
     def render(self, *args, **kwargs):
+        """
+        Gym environment rendering. If there are multiple environments then
+        they are tiled together in one image via `BaseVecEnv.render()`.
+        Otherwise (if `self.num_envs == 1`), we pass the render call directly to the
+        underlying environment.
+
+        Therefore, some arguments such as `mode` will have values that are valid
+        only when `num_envs == 1`.
+
+        :param mode: The rendering type.
+        """
         if self.num_envs == 1:
             return self.envs[0].render(*args, **kwargs)
         else:
