@@ -39,7 +39,11 @@ def test_identity(model_name):
     env = DummyVecEnv([lambda: IdentityEnv(10)])
 
     model = LEARN_FUNC_DICT[model_name](env)
+<<<<<<< HEAD
     evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=0.9)
+=======
+    evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=90)
+>>>>>>> upstream/master
 
     obs = env.reset()
     assert model.action_probability(obs).shape == (1, 10), "Error: action_probability not returning correct shape"
@@ -72,6 +76,10 @@ def test_identity_continuous(model_class):
                          action_noise=action_noise, buffer_size=int(1e6))
     model.learn(total_timesteps=20000)
 
+<<<<<<< HEAD
     evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=0.9)
+=======
+    evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=90)
+>>>>>>> upstream/master
     # Free memory
     del model, env

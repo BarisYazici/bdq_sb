@@ -46,7 +46,11 @@ class Dataset(object):
 
         data_map = dict()
         for key in self.data_map:
+<<<<<<< HEAD
             data_map[key] = self.data_map[key][cur_id:cur_id+cur_batch_size]
+=======
+            data_map[key] = self.data_map[key][cur_id:cur_id + cur_batch_size]
+>>>>>>> upstream/master
         return data_map
 
     def iterate_once(self, batch_size):

@@ -10,7 +10,11 @@ from stable_baselines import A2C, ACER, ACKTR, PPO2, bench
 from stable_baselines.common.policies import MlpLstmPolicy, LstmPolicy
 from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.vec_env.vec_normalize import VecNormalize
+<<<<<<< HEAD
 from stable_baselines.ppo2.ppo2 import safe_mean
+=======
+from stable_baselines.common.math_util import safe_mean
+>>>>>>> upstream/master
 from stable_baselines.common.evaluation import evaluate_policy
 
 

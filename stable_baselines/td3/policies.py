@@ -1,9 +1,16 @@
 import tensorflow as tf
+<<<<<<< HEAD
 import numpy as np
 from gym.spaces import Box
 
 from stable_baselines.common.policies import BasePolicy, nature_cnn, register_policy
 from stable_baselines.sac.policies import mlp
+=======
+from gym.spaces import Box
+
+from stable_baselines.common.policies import BasePolicy, nature_cnn, register_policy
+from stable_baselines.common.tf_layers import mlp
+>>>>>>> upstream/master
 
 
 class TD3Policy(BasePolicy):

@@ -2,7 +2,11 @@ import gym
 import numpy as np
 import tensorflow as tf
 
+<<<<<<< HEAD
 from stable_baselines.a2c.utils import conv
+=======
+from stable_baselines.common.tf_layers import conv
+>>>>>>> upstream/master
 from stable_baselines.common.input import observation_input
 
 
@@ -27,6 +31,7 @@ def test_conv_kernel():
     with tf.Graph().as_default():
         _, scaled_images = observation_input(ob_space, n_batch, scale=scale)
         activ = tf.nn.relu
+<<<<<<< HEAD
         layer_1 = activ(conv(scaled_images, 'c1', n_filters=32, filter_size=filter_size_1, stride=4
                              , init_scale=np.sqrt(2), **kwargs))
         layer_2 = activ(conv(layer_1, 'c2', n_filters=32, filter_size=filter_size_2, stride=4
@@ -36,5 +41,16 @@ def test_conv_kernel():
               "The current shape is {} and the desired shape is {}".format(layer_1.shape, target_shape_1)
         assert layer_2.shape == target_shape_2 \
             , "The shape of layer based on the non-squared kernel matrix is not correct. " \
+=======
+        layer_1 = activ(conv(scaled_images, 'c1', n_filters=32, filter_size=filter_size_1,
+                             stride=4, init_scale=np.sqrt(2), **kwargs))
+        layer_2 = activ(conv(layer_1, 'c2', n_filters=32, filter_size=filter_size_2,
+                             stride=4, init_scale=np.sqrt(2), **kwargs))
+        assert layer_1.shape == target_shape_1, \
+              "The shape of layer based on the squared kernel matrix is not correct. " \
+              "The current shape is {} and the desired shape is {}".format(layer_1.shape, target_shape_1)
+        assert layer_2.shape == target_shape_2, \
+              "The shape of layer based on the non-squared kernel matrix is not correct. " \
+>>>>>>> upstream/master
               "The current shape is {} and the desired shape is {}".format(layer_2.shape, target_shape_2)
     env.close()

@@ -1,6 +1,9 @@
 import time
+<<<<<<< HEAD
 import sys
 from collections import deque
+=======
+>>>>>>> upstream/master
 
 import gym
 import numpy as np
@@ -10,7 +13,13 @@ from stable_baselines import logger
 from stable_baselines.common import explained_variance, ActorCriticRLModel, tf_util, SetVerbosity, TensorboardWriter
 from stable_baselines.common.runners import AbstractEnvRunner
 from stable_baselines.common.policies import ActorCriticPolicy, RecurrentActorCriticPolicy
+<<<<<<< HEAD
 from stable_baselines.a2c.utils import total_episode_reward_logger
+=======
+from stable_baselines.common.schedules import get_schedule_fn
+from stable_baselines.common.tf_util import total_episode_reward_logger
+from stable_baselines.common.math_util import safe_mean
+>>>>>>> upstream/master
 
 
 class PPO2(ActorCriticRLModel):
@@ -55,10 +64,13 @@ class PPO2(ActorCriticRLModel):
                  verbose=0, tensorboard_log=None, _init_setup_model=True, policy_kwargs=None,
                  full_tensorboard_log=False, seed=None, n_cpu_tf_sess=None):
 
+<<<<<<< HEAD
         super(PPO2, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
                                    _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs,
                                    seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
 
+=======
+>>>>>>> upstream/master
         self.learning_rate = learning_rate
         self.cliprange = cliprange
         self.cliprange_vf = cliprange_vf
@@ -73,8 +85,11 @@ class PPO2(ActorCriticRLModel):
         self.tensorboard_log = tensorboard_log
         self.full_tensorboard_log = full_tensorboard_log
 
+<<<<<<< HEAD
         self.graph = None
         self.sess = None
+=======
+>>>>>>> upstream/master
         self.action_ph = None
         self.advs_ph = None
         self.rewards_ph = None
@@ -87,11 +102,15 @@ class PPO2(ActorCriticRLModel):
         self.pg_loss = None
         self.approxkl = None
         self.clipfrac = None
+<<<<<<< HEAD
         self.params = None
+=======
+>>>>>>> upstream/master
         self._train = None
         self.loss_names = None
         self.train_model = None
         self.act_model = None
+<<<<<<< HEAD
         self.step = None
         self.proba_step = None
         self.value = None
@@ -99,10 +118,26 @@ class PPO2(ActorCriticRLModel):
         self.n_batch = None
         self.summary = None
         self.episode_reward = None
+=======
+        self.value = None
+        self.n_batch = None
+        self.summary = None
+
+        super().__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
+                         _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs,
+                         seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
+>>>>>>> upstream/master
 
         if _init_setup_model:
             self.setup_model()
 
+<<<<<<< HEAD
+=======
+    def _make_runner(self):
+        return Runner(env=self.env, model=self, n_steps=self.n_steps,
+                      gamma=self.gamma, lam=self.lam)
+
+>>>>>>> upstream/master
     def _get_pretrain_placeholders(self):
         policy = self.act_model
         if isinstance(self.action_space, gym.spaces.Discrete):
@@ -176,7 +211,10 @@ class PPO2(ActorCriticRLModel):
                             tf.clip_by_value(train_model.value_flat - self.old_vpred_ph,
                                              - self.clip_range_vf_ph, self.clip_range_vf_ph)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master
                     vf_losses1 = tf.square(vpred - self.rewards_ph)
                     vf_losses2 = tf.square(vpred_clipped - self.rewards_ph)
                     self.vf_loss = .5 * tf.reduce_mean(tf.maximum(vf_losses1, vf_losses2))
@@ -279,9 +317,15 @@ class PPO2(ActorCriticRLModel):
             td_map[self.clip_range_vf_ph] = cliprange_vf
 
         if states is None:
+<<<<<<< HEAD
             update_fac = self.n_batch // self.nminibatches // self.noptepochs + 1
         else:
             update_fac = self.n_batch // self.nminibatches // self.noptepochs // self.n_steps + 1
+=======
+            update_fac = max(self.n_batch // self.nminibatches // self.noptepochs, 1)
+        else:
+            update_fac = max(self.n_batch // self.nminibatches // self.noptepochs // self.n_steps, 1)
+>>>>>>> upstream/master
 
         if writer is not None:
             # run loss backprop with summary, but once every 10 runs save the metadata (memory, compute time, ...)
@@ -311,11 +355,16 @@ class PPO2(ActorCriticRLModel):
         cliprange_vf = get_schedule_fn(self.cliprange_vf)
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
+<<<<<<< HEAD
+=======
+        callback = self._init_callback(callback)
+>>>>>>> upstream/master
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
             self._setup_learn()
 
+<<<<<<< HEAD
             runner = Runner(env=self.env, model=self, n_steps=self.n_steps, gamma=self.gamma, lam=self.lam)
             self.episode_reward = np.zeros((self.n_envs,))
 
@@ -323,6 +372,13 @@ class PPO2(ActorCriticRLModel):
             t_first_start = time.time()
 
             n_updates = total_timesteps // self.n_batch
+=======
+            t_first_start = time.time()
+            n_updates = total_timesteps // self.n_batch
+
+            callback.on_training_start(locals(), globals())
+
+>>>>>>> upstream/master
             for update in range(1, n_updates + 1):
                 assert self.n_batch % self.nminibatches == 0, ("The number of minibatches (`nminibatches`) "
                                                                "is not a factor of the total number of samples "
@@ -335,6 +391,7 @@ class PPO2(ActorCriticRLModel):
                 lr_now = self.learning_rate(frac)
                 cliprange_now = self.cliprange(frac)
                 cliprange_vf_now = cliprange_vf(frac)
+<<<<<<< HEAD
                 # true_reward is the reward without discount
                 obs, returns, masks, actions, values, neglogpacs, states, ep_infos, true_reward = runner.run()
                 self.num_timesteps += self.n_batch
@@ -342,11 +399,34 @@ class PPO2(ActorCriticRLModel):
                 mb_loss_vals = []
                 if states is None:  # nonrecurrent version
                     update_fac = self.n_batch // self.nminibatches // self.noptepochs + 1
+=======
+
+                callback.on_rollout_start()
+                # true_reward is the reward without discount
+                rollout = self.runner.run(callback)
+                # Unpack
+                obs, returns, masks, actions, values, neglogpacs, states, ep_infos, true_reward = rollout
+
+                callback.on_rollout_end()
+
+                # Early stopping due to the callback
+                if not self.runner.continue_training:
+                    break
+
+                self.ep_info_buf.extend(ep_infos)
+                mb_loss_vals = []
+                if states is None:  # nonrecurrent version
+                    update_fac = max(self.n_batch // self.nminibatches // self.noptepochs, 1)
+>>>>>>> upstream/master
                     inds = np.arange(self.n_batch)
                     for epoch_num in range(self.noptepochs):
                         np.random.shuffle(inds)
                         for start in range(0, self.n_batch, batch_size):
+<<<<<<< HEAD
                             timestep = self.num_timesteps // update_fac + ((self.noptepochs * self.n_batch + epoch_num *
+=======
+                            timestep = self.num_timesteps // update_fac + ((epoch_num *
+>>>>>>> upstream/master
                                                                             self.n_batch + start) // batch_size)
                             end = start + batch_size
                             mbinds = inds[start:end]
@@ -354,7 +434,11 @@ class PPO2(ActorCriticRLModel):
                             mb_loss_vals.append(self._train_step(lr_now, cliprange_now, *slices, writer=writer,
                                                                  update=timestep, cliprange_vf=cliprange_vf_now))
                 else:  # recurrent version
+<<<<<<< HEAD
                     update_fac = self.n_batch // self.nminibatches // self.noptepochs // self.n_steps + 1
+=======
+                    update_fac = max(self.n_batch // self.nminibatches // self.noptepochs // self.n_steps, 1)
+>>>>>>> upstream/master
                     assert self.n_envs % self.nminibatches == 0
                     env_indices = np.arange(self.n_envs)
                     flat_indices = np.arange(self.n_envs * self.n_steps).reshape(self.n_envs, self.n_steps)
@@ -362,7 +446,11 @@ class PPO2(ActorCriticRLModel):
                     for epoch_num in range(self.noptepochs):
                         np.random.shuffle(env_indices)
                         for start in range(0, self.n_envs, envs_per_batch):
+<<<<<<< HEAD
                             timestep = self.num_timesteps // update_fac + ((self.noptepochs * self.n_envs + epoch_num *
+=======
+                            timestep = self.num_timesteps // update_fac + ((epoch_num *
+>>>>>>> upstream/master
                                                                             self.n_envs + start) // envs_per_batch)
                             end = start + envs_per_batch
                             mb_env_inds = env_indices[start:end]
@@ -378,10 +466,17 @@ class PPO2(ActorCriticRLModel):
                 fps = int(self.n_batch / (t_now - t_start))
 
                 if writer is not None:
+<<<<<<< HEAD
                     self.episode_reward = total_episode_reward_logger(self.episode_reward,
                                                                       true_reward.reshape((self.n_envs, self.n_steps)),
                                                                       masks.reshape((self.n_envs, self.n_steps)),
                                                                       writer, self.num_timesteps)
+=======
+                    total_episode_reward_logger(self.episode_reward,
+                                                true_reward.reshape((self.n_envs, self.n_steps)),
+                                                masks.reshape((self.n_envs, self.n_steps)),
+                                                writer, self.num_timesteps)
+>>>>>>> upstream/master
 
                 if self.verbose >= 1 and (update % log_interval == 0 or update == 1):
                     explained_var = explained_variance(values, returns)
@@ -390,20 +485,30 @@ class PPO2(ActorCriticRLModel):
                     logger.logkv("total_timesteps", self.num_timesteps)
                     logger.logkv("fps", fps)
                     logger.logkv("explained_variance", float(explained_var))
+<<<<<<< HEAD
                     if len(ep_info_buf) > 0 and len(ep_info_buf[0]) > 0:
                         logger.logkv('ep_reward_mean', safe_mean([ep_info['r'] for ep_info in ep_info_buf]))
                         logger.logkv('ep_len_mean', safe_mean([ep_info['l'] for ep_info in ep_info_buf]))
+=======
+                    if len(self.ep_info_buf) > 0 and len(self.ep_info_buf[0]) > 0:
+                        logger.logkv('ep_reward_mean', safe_mean([ep_info['r'] for ep_info in self.ep_info_buf]))
+                        logger.logkv('ep_len_mean', safe_mean([ep_info['l'] for ep_info in self.ep_info_buf]))
+>>>>>>> upstream/master
                     logger.logkv('time_elapsed', t_start - t_first_start)
                     for (loss_val, loss_name) in zip(loss_vals, self.loss_names):
                         logger.logkv(loss_name, loss_val)
                     logger.dumpkvs()
 
+<<<<<<< HEAD
                 if callback is not None:
                     # Only stop training if return value is False, not when it is None. This is for backwards
                     # compatibility with callbacks that have no return statement.
                     if callback(locals(), globals()) is False:
                         break
 
+=======
+            callback.on_training_end()
+>>>>>>> upstream/master
             return self
 
     def save(self, save_path, cloudpickle=False):
@@ -450,7 +555,11 @@ class Runner(AbstractEnvRunner):
         self.lam = lam
         self.gamma = gamma
 
+<<<<<<< HEAD
     def run(self):
+=======
+    def _run(self):
+>>>>>>> upstream/master
         """
         Run a learning step of the model
 
@@ -480,6 +589,19 @@ class Runner(AbstractEnvRunner):
             if isinstance(self.env.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(actions, self.env.action_space.low, self.env.action_space.high)
             self.obs[:], rewards, self.dones, infos = self.env.step(clipped_actions)
+<<<<<<< HEAD
+=======
+
+            self.model.num_timesteps += self.n_envs
+
+            if self.callback is not None:
+                # Abort training early
+                if self.callback.on_step() is False:
+                    self.continue_training = False
+                    # Return dummy values
+                    return [None] * 9
+
+>>>>>>> upstream/master
             for info in infos:
                 maybe_ep_info = info.get('episode')
                 if maybe_ep_info is not None:
@@ -514,6 +636,7 @@ class Runner(AbstractEnvRunner):
         return mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs, mb_states, ep_infos, true_reward
 
 
+<<<<<<< HEAD
 def get_schedule_fn(value_schedule):
     """
     Transform (if needed) learning rate and clip range
@@ -532,6 +655,8 @@ def get_schedule_fn(value_schedule):
     return value_schedule
 
 
+=======
+>>>>>>> upstream/master
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def swap_and_flatten(arr):
     """
@@ -542,6 +667,7 @@ def swap_and_flatten(arr):
     """
     shape = arr.shape
     return arr.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
+<<<<<<< HEAD
 
 
 def constfn(val):
@@ -568,3 +694,5 @@ def safe_mean(arr):
     :return: (float)
     """
     return np.nan if len(arr) == 0 else np.mean(arr)
+=======
+>>>>>>> upstream/master

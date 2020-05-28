@@ -41,19 +41,34 @@ def test_linear_schedule():
     assert np.isclose(linear_sched.value(50), 0.5)
     assert np.isclose(linear_sched.value(0), 0.2)
     assert np.isclose(linear_sched.value(100), 0.8)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> upstream/master
     linear_sched = LinearSchedule(schedule_timesteps=100, initial_p=0.8, final_p=0.2)
     assert np.isclose(linear_sched.value(50), 0.5)
     assert np.isclose(linear_sched.value(0), 0.8)
     assert np.isclose(linear_sched.value(100), 0.2)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> upstream/master
     linear_sched = LinearSchedule(schedule_timesteps=100, initial_p=-0.6, final_p=0.2)
     assert np.isclose(linear_sched.value(50), -0.2)
     assert np.isclose(linear_sched.value(0), -0.6)
     assert np.isclose(linear_sched.value(100), 0.2)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> upstream/master
     linear_sched = LinearSchedule(schedule_timesteps=100, initial_p=0.2, final_p=-0.6)
     assert np.isclose(linear_sched.value(50), -0.2)
     assert np.isclose(linear_sched.value(0), 0.2)
     assert np.isclose(linear_sched.value(100), -0.6)
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master

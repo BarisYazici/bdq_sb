@@ -21,7 +21,7 @@ TL;DR
 4. For better performance, increase the training budget
 
 
-Like any other subject, if you want to work with RL, you should first read about it (we have a dedicated `ressource page <rl.html>`_ to get you started)
+Like any other subject, if you want to work with RL, you should first read about it (we have a dedicated `resource page <rl.html>`_ to get you started)
 to understand what you are using. We also recommend you read Stable Baselines (SB) documentation and do the `tutorial <https://github.com/araffin/rl-tutorial-jnrr19>`_.
 It covers basic usage and guide you towards more advanced concepts of the library (e.g. callbacks and wrappers).
 
@@ -56,25 +56,31 @@ That's why most of the successes in RL were achieved on games or in simulation o
 As a general advice, to obtain better performances, you should augment the budget of the agent (number of training timesteps).
 
 
-In order to to achieved a desired behavior, expert knowledge is often required to design an adequate reward function.
+In order to achieve the desired behavior, expert knowledge is often required to design an adequate reward function.
 This *reward engineering* (or *RewArt* as coined by `Freek Stulp <http://www.freekstulp.net/>`_), necessitates several iterations. As a good example of reward shaping,
 you can take a look at `Deep Mimic paper <https://xbpeng.github.io/projects/DeepMimic/index.html>`_ which combines imitation learning and reinforcement learning to do acrobatic moves.
 
 One last limitation of RL is the instability of training. That is to say, you can observe during training a huge drop in performance.
-This behavior is particularly present in `DDPG`, that's why its extension `TD3` tries to tackle that issue.
-Other method, like `TRPO` or `PPO` make use of a *trust region* to minimize that problem by avoiding too large update.
+This behavior is particularly present in ``DDPG``, that's why its extension ``TD3`` tries to tackle that issue.
+Other method, like ``TRPO`` or ``PPO`` make use of a *trust region* to minimize that problem by avoiding too large update.
 
 
 How to evaluate an RL algorithm?
 --------------------------------
 
 Because most algorithms use exploration noise during training, you need a separate test environment to evaluate the performance
-of your agent at a given time. It is recommended to periodically evaluate your agent for `n` test episodes (`n` is usually between 5 and 20)
+of your agent at a given time. It is recommended to periodically evaluate your agent for ``n`` test episodes (``n`` is usually between 5 and 20)
 and average the reward per episode to have a good estimate.
 
 As some policy are stochastic by default (e.g. A2C or PPO), you should also try to set `deterministic=True` when calling the `.predict()` method,
 this frequently leads to better performance.
 Looking at the training curve (episode reward function of the timesteps) is a good proxy but underestimates the agent true performance.
+
+
+.. note::
+
+	We provide an ``EvalCallback`` for doing such evaluation. You can read more about it in the :ref:`Callbacks <callbacks>` section.
+
 
 
 We suggest you reading `Deep Reinforcement Learning that Matters <https://arxiv.org/abs/1709.06560>`_ for a good discussion about RL evaluation.
@@ -90,10 +96,10 @@ There is no silver bullet in RL, depending on your needs and problem, you may ch
 The first distinction comes from your action space, i.e., do you have discrete (e.g. LEFT, RIGHT, ...)
 or continuous actions (ex: go to a certain speed)?
 
-Some algorithms are only tailored for one or the other domain: `DQN` only supports discrete actions, where `SAC` is restricted to continuous actions.
+Some algorithms are only tailored for one or the other domain: ``DQN`` only supports discrete actions, where ``SAC`` is restricted to continuous actions.
 
 The second difference that will help you choose is whether you can parallelize your training or not, and how you can do it (with or without MPI?).
-If what matters is the wall clock training time, then you should lean towards `A2C` and its derivatives (PPO, ACER, ACKTR, ...).
+If what matters is the wall clock training time, then you should lean towards ``A2C`` and its derivatives (PPO, ACER, ACKTR, ...).
 Take a look at the `Vectorized Environments <vec_envs.html>`_ to learn more about training with multiple workers.
 
 To sum it up:
@@ -103,7 +109,7 @@ Discrete Actions
 
 .. note::
 
-	This covers `Discrete`, `MultiDiscrete`, `Binary` and `MultiBinary` spaces
+	This covers ``Discrete``, ``MultiDiscrete``, ``Binary`` and ``MultiBinary`` spaces
 
 
 Discrete Actions - Single Process
@@ -126,7 +132,7 @@ Continuous Actions
 Continuous Actions - Single Process
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Current State Of The Art (SOTA) algorithms are `SAC` and `TD3`.
+Current State Of The Art (SOTA) algorithms are ``SAC`` and ``TD3``.
 Please use the hyperparameters in the `RL zoo <https://github.com/araffin/rl-baselines-zoo>`_ for best results.
 
 
@@ -146,7 +152,7 @@ If you can use MPI, then you can choose between PPO1, TRPO and DDPG.
 Goal Environment
 -----------------
 
-If your environment follows the `GoalEnv` interface (cf `HER <../modules/her.html>`_), then you should use
+If your environment follows the ``GoalEnv`` interface (cf `HER <../modules/her.html>`_), then you should use
 HER + (SAC/TD3/DDPG/DQN) depending on the action space.
 
 
@@ -159,7 +165,7 @@ HER + (SAC/TD3/DDPG/DQN) depending on the action space.
 Tips and Tricks when creating a custom environment
 ==================================================
 
-If you want to learn about how to create a custom environment, we recommend you read this `page <custom_envs.html>`_.
+If you want to learn about how to create a custom environment, we recommend you read this `page <custom_env.html>`_.
 We also provide a `colab notebook <https://colab.research.google.com/github/araffin/rl-tutorial-jnrr19/blob/master/5_custom_gym_env.ipynb>`_ for
 a concrete example of creating a custom gym environment.
 
@@ -207,11 +213,11 @@ this can harm learning and be difficult to debug (cf attached image and `issue #
 
 Another consequence of using a Gaussian is that the action range is not bounded.
 That's why clipping is usually used as a bandage to stay in a valid interval.
-A better solution would be to use a squashing function (cf `SAC`) or a Beta distribution (cf `issue #112 <https://github.com/hill-a/stable-baselines/issues/112>`_).
+A better solution would be to use a squashing function (cf ``SAC``) or a Beta distribution (cf `issue #112 <https://github.com/hill-a/stable-baselines/issues/112>`_).
 
 .. note::
 
-	This statement is not true for `DDPG` or `TD3` because they don't rely on any probability distribution.
+	This statement is not true for ``DDPG`` or ``TD3`` because they don't rely on any probability distribution.
 
 
 

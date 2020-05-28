@@ -5,7 +5,15 @@ import numpy as np
 
 from stable_baselines.common.env_checker import check_env
 from stable_baselines.common.bit_flipping_env import BitFlippingEnv
+<<<<<<< HEAD
 from stable_baselines.common.identity_env import IdentityEnv, IdentityEnvBox
+=======
+from stable_baselines.common.identity_env import (IdentityEnv, IdentityEnvBox,
+                                                  IdentityEnvMultiBinary, IdentityEnvMultiDiscrete,)
+
+ENV_CLASSES = [BitFlippingEnv, IdentityEnv, IdentityEnvBox, IdentityEnvMultiBinary,
+               IdentityEnvMultiDiscrete]
+>>>>>>> upstream/master
 
 
 @pytest.mark.parametrize("env_id", ['CartPole-v0', 'Pendulum-v0', 'BreakoutNoFrameskip-v4'])
@@ -28,12 +36,34 @@ def test_env(env_id):
         assert len(record) == 0
 
 
+<<<<<<< HEAD
 @pytest.mark.parametrize("env_class", [IdentityEnv, IdentityEnvBox, BitFlippingEnv])
+=======
+@pytest.mark.parametrize("env_class", ENV_CLASSES)
+>>>>>>> upstream/master
 def test_custom_envs(env_class):
     env = env_class()
     check_env(env)
 
 
+<<<<<<< HEAD
+=======
+def test_high_dimension_action_space():
+    """
+    Test for continuous action space
+    with more than one action.
+    """
+    env = gym.make('Pendulum-v0')
+    # Patch the action space
+    env.action_space = spaces.Box(low=-1, high=1, shape=(20,), dtype=np.float32)
+    # Patch to avoid error
+    def patched_step(_action):
+        return env.observation_space.sample(), 0.0, False, {}
+    env.step = patched_step
+    check_env(env)
+
+
+>>>>>>> upstream/master
 @pytest.mark.parametrize("new_obs_space", [
     # Small image
     spaces.Box(low=0, high=255, shape=(32, 32, 3), dtype=np.uint8),

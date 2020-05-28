@@ -1,11 +1,18 @@
 import multiprocessing
 from collections import OrderedDict
+<<<<<<< HEAD
+=======
+from typing import Sequence
+>>>>>>> upstream/master
 
 import gym
 import numpy as np
 
 from stable_baselines.common.vec_env.base_vec_env import VecEnv, CloudpickleWrapper
+<<<<<<< HEAD
 from stable_baselines.common.tile_images import tile_images
+=======
+>>>>>>> upstream/master
 
 
 def _worker(remote, parent_remote, env_fn_wrapper):
@@ -21,6 +28,11 @@ def _worker(remote, parent_remote, env_fn_wrapper):
                     info['terminal_observation'] = observation
                     observation = env.reset()
                 remote.send((observation, reward, done, info))
+<<<<<<< HEAD
+=======
+            elif cmd == 'seed':
+                remote.send(env.seed(data))
+>>>>>>> upstream/master
             elif cmd == 'reset':
                 observation = env.reset()
                 remote.send(observation)
@@ -87,7 +99,11 @@ class SubprocVecEnv(VecEnv):
         for work_remote, remote, env_fn in zip(self.work_remotes, self.remotes, env_fns):
             args = (work_remote, remote, CloudpickleWrapper(env_fn))
             # daemon=True: if the main process crashes, we should not cause things to hang
+<<<<<<< HEAD
             process = ctx.Process(target=_worker, args=args, daemon=True)
+=======
+            process = ctx.Process(target=_worker, args=args, daemon=True)  # pytype:disable=attribute-error
+>>>>>>> upstream/master
             process.start()
             self.processes.append(process)
             work_remote.close()
@@ -107,6 +123,14 @@ class SubprocVecEnv(VecEnv):
         obs, rews, dones, infos = zip(*results)
         return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
 
+<<<<<<< HEAD
+=======
+    def seed(self, seed=None):
+        for idx, remote in enumerate(self.remotes):
+            remote.send(('seed', seed + idx))
+        return [remote.recv() for remote in self.remotes]
+
+>>>>>>> upstream/master
     def reset(self):
         for remote in self.remotes:
             remote.send(('reset', None))
@@ -125,12 +149,17 @@ class SubprocVecEnv(VecEnv):
             process.join()
         self.closed = True
 
+<<<<<<< HEAD
     def render(self, mode='human', *args, **kwargs):
+=======
+    def get_images(self, *args, **kwargs) -> Sequence[np.ndarray]:
+>>>>>>> upstream/master
         for pipe in self.remotes:
             # gather images from subprocesses
             # `mode` will be taken into account later
             pipe.send(('render', (args, {'mode': 'rgb_array', **kwargs})))
         imgs = [pipe.recv() for pipe in self.remotes]
+<<<<<<< HEAD
         # Create a big image by tiling images from subprocesses
         bigimg = tile_images(imgs)
         if mode == 'human':
@@ -146,6 +175,8 @@ class SubprocVecEnv(VecEnv):
         for pipe in self.remotes:
             pipe.send(('render', {"mode": 'rgb_array'}))
         imgs = [pipe.recv() for pipe in self.remotes]
+=======
+>>>>>>> upstream/master
         return imgs
 
     def get_attr(self, attr_name, indices=None):

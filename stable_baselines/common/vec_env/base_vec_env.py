@@ -1,9 +1,19 @@
 from abc import ABC, abstractmethod
 import inspect
 import pickle
+<<<<<<< HEAD
 
 import cloudpickle
 from stable_baselines import logger
+=======
+from typing import Sequence, Optional, List, Union
+
+import cloudpickle
+import numpy as np
+
+from stable_baselines import logger
+from stable_baselines.common.tile_images import tile_images
+>>>>>>> upstream/master
 
 
 class AlreadySteppingError(Exception):
@@ -123,6 +133,21 @@ class VecEnv(ABC):
         """
         pass
 
+<<<<<<< HEAD
+=======
+    @abstractmethod
+    def seed(self, seed: Optional[int] = None) -> List[Union[None, int]]:
+        """
+        Sets the random seeds for all environments, based on a given seed.
+        Each individual environment will still get its own seed, by incrementing the given seed.
+
+        :param seed: (Optional[int]) The random seed. May be None for completely random seeding.
+        :return: (List[Union[None, int]]) Returns a list containing the seeds for each individual env.
+            Note that all list elements may be None, if the env does not return anything when being seeded.
+        """
+        pass
+
+>>>>>>> upstream/master
     def step(self, actions):
         """
         Step the environments with the given action
@@ -133,12 +158,17 @@ class VecEnv(ABC):
         self.step_async(actions)
         return self.step_wait()
 
+<<<<<<< HEAD
     def get_images(self):
+=======
+    def get_images(self, *args, **kwargs) -> Sequence[np.ndarray]:
+>>>>>>> upstream/master
         """
         Return RGB images from each environment
         """
         raise NotImplementedError
 
+<<<<<<< HEAD
     def render(self, *args, **kwargs):
         """
         Gym environment rendering
@@ -146,6 +176,30 @@ class VecEnv(ABC):
         :param mode: (str) the rendering type
         """
         logger.warn('Render not defined for %s' % self)
+=======
+    def render(self, mode: str, *args, **kwargs):
+        """
+        Gym environment rendering
+
+        :param mode: the rendering type
+        """
+        try:
+            imgs = self.get_images(*args, **kwargs)
+        except NotImplementedError:
+            logger.warn('Render not defined for {}'.format(self))
+            return
+
+        # Create a big image by tiling images from subprocesses
+        bigimg = tile_images(imgs)
+        if mode == 'human':
+            import cv2  # pytype:disable=import-error
+            cv2.imshow('vecenv', bigimg[:, :, ::-1])
+            cv2.waitKey(1)
+        elif mode == 'rgb_array':
+            return bigimg
+        else:
+            raise NotImplementedError
+>>>>>>> upstream/master
 
     @property
     def unwrapped(self):
@@ -206,6 +260,12 @@ class VecEnvWrapper(VecEnv):
     def step_wait(self):
         pass
 
+<<<<<<< HEAD
+=======
+    def seed(self, seed=None):
+        return self.venv.seed(seed)
+
+>>>>>>> upstream/master
     def close(self):
         return self.venv.close()
 

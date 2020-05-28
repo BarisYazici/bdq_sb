@@ -1,5 +1,8 @@
 import tensorflow as tf
+<<<<<<< HEAD
 import numpy as np
+=======
+>>>>>>> upstream/master
 from gym.spaces import Box
 
 from stable_baselines.common.policies import BasePolicy, nature_cnn, register_policy

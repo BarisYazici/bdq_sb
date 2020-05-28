@@ -36,6 +36,10 @@ def test_monitor():
     file_handler.close()
     os.remove(mon_file)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
 def test_monitor_load_results(tmp_path):
     """
     test load_results on log files produced by the monitor wrapper

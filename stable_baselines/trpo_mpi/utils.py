@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import gym
 import numpy as np
 
@@ -128,6 +129,10 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False):
                 observation = env.reset()
         step += 1
 
+=======
+import numpy as np
+
+>>>>>>> upstream/master
 
 def add_vtarg_and_adv(seg, gamma, lam):
     """
@@ -149,6 +154,7 @@ def add_vtarg_and_adv(seg, gamma, lam):
         delta = rewards[step] + gamma * vpred[step + 1] * nonterminal - vpred[step]
         seg["adv"][step] = lastgaelam = delta + gamma * lam * nonterminal * lastgaelam
     seg["tdlamret"] = seg["adv"] + seg["vpred"]
+<<<<<<< HEAD
 
 
 def flatten_lists(listoflists):
@@ -159,3 +165,5 @@ def flatten_lists(listoflists):
     :return: (list)
     """
     return [el for list_ in listoflists for el in list_]
+=======
+>>>>>>> upstream/master

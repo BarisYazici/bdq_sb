@@ -95,7 +95,10 @@ class HindsightExperienceReplayWrapper(object):
     def __len__(self):
         return len(self.replay_buffer)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master
     def _sample_achieved_goal(self, episode_transitions, transition_idx):
         """
         Sample an achieved goal according to the sampling strategy.
@@ -173,7 +176,11 @@ class HindsightExperienceReplayWrapper(object):
                 next_obs_dict['desired_goal'] = goal
 
                 # Update the reward according to the new desired goal
+<<<<<<< HEAD
                 reward = self.env.compute_reward(goal, next_obs_dict['achieved_goal'], None)
+=======
+                reward = self.env.compute_reward(next_obs_dict['achieved_goal'], goal, None)
+>>>>>>> upstream/master
                 # Can we use achieved_goal == desired_goal?
                 done = False
 

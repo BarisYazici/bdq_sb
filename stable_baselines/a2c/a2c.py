@@ -1,5 +1,8 @@
 import time
+<<<<<<< HEAD
 from collections import deque
+=======
+>>>>>>> upstream/master
 
 import gym
 import numpy as np
@@ -9,9 +12,33 @@ from stable_baselines import logger
 from stable_baselines.common import explained_variance, tf_util, ActorCriticRLModel, SetVerbosity, TensorboardWriter
 from stable_baselines.common.policies import ActorCriticPolicy, RecurrentActorCriticPolicy
 from stable_baselines.common.runners import AbstractEnvRunner
+<<<<<<< HEAD
 from stable_baselines.a2c.utils import discount_with_dones, Scheduler, mse, \
     total_episode_reward_logger
 from stable_baselines.ppo2.ppo2 import safe_mean
+=======
+from stable_baselines.common.schedules import Scheduler
+from stable_baselines.common.tf_util import mse, total_episode_reward_logger
+from stable_baselines.common.math_util import safe_mean
+
+
+def discount_with_dones(rewards, dones, gamma):
+    """
+    Apply the discount value to the reward, where the environment is not done
+
+    :param rewards: ([float]) The rewards
+    :param dones: ([bool]) Whether an environment is done or not
+    :param gamma: (float) The discount value
+    :return: ([float]) The discounted rewards
+    """
+    discounted = []
+    ret = 0  # Return: discounted reward
+    for reward, done in zip(rewards[::-1], dones[::-1]):
+        ret = reward + gamma * ret * (1. - done)  # fixed off by one bug
+        discounted.append(ret)
+    return discounted[::-1]
+
+>>>>>>> upstream/master
 
 class A2C(ActorCriticRLModel):
     """
@@ -27,6 +54,10 @@ class A2C(ActorCriticRLModel):
     :param max_grad_norm: (float) The maximum value for the gradient clipping
     :param learning_rate: (float) The learning rate
     :param alpha: (float)  RMSProp decay parameter (default: 0.99)
+<<<<<<< HEAD
+=======
+    :param momentum: (float) RMSProp momentum parameter (default: 0.0)
+>>>>>>> upstream/master
     :param epsilon: (float) RMSProp epsilon (stabilizes square root computation in denominator of RMSProp update)
         (default: 1e-5)
     :param lr_schedule: (str) The type of scheduler for the learning rate update ('linear', 'constant',
@@ -46,6 +77,7 @@ class A2C(ActorCriticRLModel):
     """
 
     def __init__(self, policy, env, gamma=0.99, n_steps=5, vf_coef=0.25, ent_coef=0.01, max_grad_norm=0.5,
+<<<<<<< HEAD
                  learning_rate=7e-4, alpha=0.99, epsilon=1e-5, lr_schedule='constant', verbose=0,
                  tensorboard_log=None, _init_setup_model=True, policy_kwargs=None,
                  full_tensorboard_log=False, seed=None, n_cpu_tf_sess=None):
@@ -54,20 +86,33 @@ class A2C(ActorCriticRLModel):
                                   _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs,
                                   seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
 
+=======
+                 learning_rate=7e-4, alpha=0.99, momentum=0.0, epsilon=1e-5, lr_schedule='constant',
+                 verbose=0, tensorboard_log=None, _init_setup_model=True, policy_kwargs=None,
+                 full_tensorboard_log=False, seed=None, n_cpu_tf_sess=None):
+
+>>>>>>> upstream/master
         self.n_steps = n_steps
         self.gamma = gamma
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef
         self.max_grad_norm = max_grad_norm
         self.alpha = alpha
+<<<<<<< HEAD
+=======
+        self.momentum = momentum
+>>>>>>> upstream/master
         self.epsilon = epsilon
         self.lr_schedule = lr_schedule
         self.learning_rate = learning_rate
         self.tensorboard_log = tensorboard_log
         self.full_tensorboard_log = full_tensorboard_log
 
+<<<<<<< HEAD
         self.graph = None
         self.sess = None
+=======
+>>>>>>> upstream/master
         self.learning_rate_ph = None
         self.n_batch = None
         self.actions_ph = None
@@ -76,22 +121,41 @@ class A2C(ActorCriticRLModel):
         self.pg_loss = None
         self.vf_loss = None
         self.entropy = None
+<<<<<<< HEAD
         self.params = None
         self.apply_backprop = None
         self.train_model = None
         self.step_model = None
         self.step = None
+=======
+        self.apply_backprop = None
+        self.train_model = None
+        self.step_model = None
+>>>>>>> upstream/master
         self.proba_step = None
         self.value = None
         self.initial_state = None
         self.learning_rate_schedule = None
         self.summary = None
+<<<<<<< HEAD
         self.episode_reward = None
+=======
+
+        super(A2C, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
+                                  _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs,
+                                  seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
+>>>>>>> upstream/master
 
         # if we are loading, it is possible the environment is not known, however the obs and action space are known
         if _init_setup_model:
             self.setup_model()
 
+<<<<<<< HEAD
+=======
+    def _make_runner(self) -> AbstractEnvRunner:
+        return A2CRunner(self.env, self, n_steps=self.n_steps, gamma=self.gamma)
+
+>>>>>>> upstream/master
     def _get_pretrain_placeholders(self):
         policy = self.train_model
         if isinstance(self.action_space, gym.spaces.Discrete):
@@ -165,7 +229,11 @@ class A2C(ActorCriticRLModel):
                             tf.summary.histogram('observation', train_model.obs_ph)
 
                 trainer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate_ph, decay=self.alpha,
+<<<<<<< HEAD
                                                     epsilon=self.epsilon)
+=======
+                                                    epsilon=self.epsilon, momentum=self.momentum)
+>>>>>>> upstream/master
                 self.apply_backprop = trainer.apply_gradients(grads)
 
                 self.train_model = train_model
@@ -228,6 +296,10 @@ class A2C(ActorCriticRLModel):
               reset_num_timesteps=True):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
+<<<<<<< HEAD
+=======
+        callback = self._init_callback(callback)
+>>>>>>> upstream/master
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
@@ -235,6 +307,7 @@ class A2C(ActorCriticRLModel):
             self.learning_rate_schedule = Scheduler(initial_value=self.learning_rate, n_values=total_timesteps,
                                                     schedule=self.lr_schedule)
 
+<<<<<<< HEAD
             runner = A2CRunner(self.env, self, n_steps=self.n_steps, gamma=self.gamma)
             self.episode_reward = np.zeros((self.n_envs,))
             # Training stats (when using Monitor wrapper)
@@ -245,12 +318,33 @@ class A2C(ActorCriticRLModel):
                 # true_reward is the reward without discount
                 obs, states, rewards, masks, actions, values, ep_infos, true_reward = runner.run()
                 ep_info_buf.extend(ep_infos)
+=======
+            t_start = time.time()
+            callback.on_training_start(locals(), globals())
+
+            for update in range(1, total_timesteps // self.n_batch + 1):
+
+                callback.on_rollout_start()
+                # true_reward is the reward without discount
+                rollout = self.runner.run(callback)
+                # unpack
+                obs, states, rewards, masks, actions, values, ep_infos, true_reward = rollout
+
+                callback.on_rollout_end()
+
+                # Early stopping due to the callback
+                if not self.runner.continue_training:
+                    break
+
+                self.ep_info_buf.extend(ep_infos)
+>>>>>>> upstream/master
                 _, value_loss, policy_entropy = self._train_step(obs, states, rewards, masks, actions, values,
                                                                  self.num_timesteps // self.n_batch, writer)
                 n_seconds = time.time() - t_start
                 fps = int((update * self.n_batch) / n_seconds)
 
                 if writer is not None:
+<<<<<<< HEAD
                     self.episode_reward = total_episode_reward_logger(self.episode_reward,
                                                                       true_reward.reshape((self.n_envs, self.n_steps)),
                                                                       masks.reshape((self.n_envs, self.n_steps)),
@@ -263,6 +357,12 @@ class A2C(ActorCriticRLModel):
                     # compatibility with callbacks that have no return statement.
                     if callback(locals(), globals()) is False:
                         break
+=======
+                    total_episode_reward_logger(self.episode_reward,
+                                                true_reward.reshape((self.n_envs, self.n_steps)),
+                                                masks.reshape((self.n_envs, self.n_steps)),
+                                                writer, self.num_timesteps)
+>>>>>>> upstream/master
 
                 if self.verbose >= 1 and (update % log_interval == 0 or update == 1):
                     explained_var = explained_variance(values, rewards)
@@ -272,11 +372,20 @@ class A2C(ActorCriticRLModel):
                     logger.record_tabular("policy_entropy", float(policy_entropy))
                     logger.record_tabular("value_loss", float(value_loss))
                     logger.record_tabular("explained_variance", float(explained_var))
+<<<<<<< HEAD
                     if len(ep_info_buf) > 0 and len(ep_info_buf[0]) > 0:
                         logger.logkv('ep_reward_mean', safe_mean([ep_info['r'] for ep_info in ep_info_buf]))
                         logger.logkv('ep_len_mean', safe_mean([ep_info['l'] for ep_info in ep_info_buf]))
                     logger.dump_tabular()
 
+=======
+                    if len(self.ep_info_buf) > 0 and len(self.ep_info_buf[0]) > 0:
+                        logger.logkv('ep_reward_mean', safe_mean([ep_info['r'] for ep_info in self.ep_info_buf]))
+                        logger.logkv('ep_len_mean', safe_mean([ep_info['l'] for ep_info in self.ep_info_buf]))
+                    logger.dump_tabular()
+
+        callback.on_training_end()
+>>>>>>> upstream/master
         return self
 
     def save(self, save_path, cloudpickle=False):
@@ -319,7 +428,11 @@ class A2CRunner(AbstractEnvRunner):
         super(A2CRunner, self).__init__(env=env, model=model, n_steps=n_steps)
         self.gamma = gamma
 
+<<<<<<< HEAD
     def run(self):
+=======
+    def _run(self):
+>>>>>>> upstream/master
         """
         Run a learning step of the model
 
@@ -340,6 +453,19 @@ class A2CRunner(AbstractEnvRunner):
             if isinstance(self.env.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(actions, self.env.action_space.low, self.env.action_space.high)
             obs, rewards, dones, infos = self.env.step(clipped_actions)
+<<<<<<< HEAD
+=======
+
+            self.model.num_timesteps += self.n_envs
+
+            if self.callback is not None:
+                # Abort training early
+                if self.callback.on_step() is False:
+                    self.continue_training = False
+                    # Return dummy values
+                    return [None] * 8
+
+>>>>>>> upstream/master
             for info in infos:
                 maybe_ep_info = info.get('episode')
                 if maybe_ep_info is not None:
