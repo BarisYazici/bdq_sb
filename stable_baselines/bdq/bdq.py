@@ -9,13 +9,11 @@ from stable_baselines.common import tf_util, OffPolicyRLModel, SetVerbosity, Ten
 from stable_baselines.common.vec_env import VecEnv
 from stable_baselines.common.schedules import LinearSchedule, PiecewiseSchedule, ConstantSchedule
 from stable_baselines.bdq.build_graph import build_train
-from stable_baselines.bdq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
+# from stable_baselines.bdq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
+from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffer
+
 from stable_baselines.bdq.policies import BDQPolicy, ActionBranching
-from stable_baselines.a2c.utils import total_episode_reward_logger
-
-
-# def make_obs_ph(obs_space, name):
-#     return tf_util.BatchInput(obs_space.shape, name=name)
+# from stable_baselines.a2c.utils import total_episode_reward_logger
 
 class BDQ(OffPolicyRLModel):
     """
@@ -294,7 +292,7 @@ class BDQ(OffPolicyRLModel):
                     # Avoid changing the original ones
                     obs_, new_obs_, reward_ = obs, new_obs, rew
                 # Store transition in the replay buffer.
-                self.replay_buffer.add(obs, action_idxes, rew, new_obs, float(done))
+                self.replay_buffer.add(obs_, action_idxes, reward_, new_obs_, float(done))
                 obs = new_obs
                 # Save the unnormalized observation
                 if self._vec_normalize_env is not None:
