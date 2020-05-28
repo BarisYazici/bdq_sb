@@ -30,11 +30,8 @@ class ExpertDataset(object):
     :param sequential_preprocessing: (bool) Do not use subprocess to preprocess
         the data (slower but use less memory for the CI)
     """
-<<<<<<< HEAD
-=======
     # Excluded attribute when pickling the object
     EXCLUDED_KEYS = {'dataloader', 'train_loader', 'val_loader'}
->>>>>>> upstream/master
 
     def __init__(self, expert_path=None, traj_data=None, train_fraction=0.7, batch_size=64,
                  traj_limitation=-1, randomize=True, verbose=1, sequential_preprocessing=False):
@@ -123,15 +120,6 @@ class ExpertDataset(object):
                                      sequential=self.sequential_preprocessing)
 
     def __del__(self):
-<<<<<<< HEAD
-        del self.dataloader, self.train_loader, self.val_loader
-
-    def prepare_pickling(self):
-        """
-        Exit processes in order to pickle the dataset.
-        """
-        self.dataloader, self.train_loader, self.val_loader = None, None, None
-=======
         # Exit processes if needed
         for key in self.EXCLUDED_KEYS:
             if self.__dict__.get(key) is not None:
@@ -161,7 +149,6 @@ class ExpertDataset(object):
         self.dataloader = None
         self.train_loader = None
         self.val_loader = None
->>>>>>> upstream/master
 
     def log_info(self):
         """
@@ -241,11 +228,7 @@ class DataLoader(object):
         self.n_minibatches = len(indices) // batch_size
         # Add a partial minibatch, for instance
         # when there is not enough samples
-<<<<<<< HEAD
-        if partial_minibatch and len(indices) / batch_size > 0:
-=======
         if partial_minibatch and len(indices) % batch_size > 0:
->>>>>>> upstream/master
             self.n_minibatches += 1
         self.batch_size = batch_size
         self.observations = observations

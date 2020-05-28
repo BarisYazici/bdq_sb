@@ -42,10 +42,6 @@ class HERGoalEnvWrapper(object):
             else:
                 assert len(goal_space_shape) == 1, "Only 1D observation spaces are supported yet"
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/master
         if isinstance(self.spaces[0], spaces.MultiBinary):
             total_dim = self.obs_dim + 2 * self.goal_dim
             self.observation_space = spaces.MultiBinary(total_dim)
@@ -62,10 +58,6 @@ class HERGoalEnvWrapper(object):
         else:
             raise NotImplementedError("{} space is not supported".format(type(self.spaces[0])))
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/master
     def convert_dict_to_obs(self, obs_dict):
         """
         :param obs_dict: (dict<np.ndarray>)

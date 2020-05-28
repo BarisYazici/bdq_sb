@@ -34,10 +34,6 @@ STORE_FORMAT = [
     "cloudpickle"
 ]
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 @pytest.mark.slow
 @pytest.mark.parametrize("model_class", MODEL_LIST)
 @pytest.mark.parametrize("storage_method", STORE_METHODS)
@@ -128,10 +124,6 @@ def test_model_manipulation(request, model_class, storage_method, store_format):
         if os.path.exists(model_fname):
             os.remove(model_fname)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 class CustomMlpPolicy(FeedForwardPolicy):
     """A dummy "custom" policy to test out custom_objects"""
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False, **_kwargs):

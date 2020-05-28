@@ -8,24 +8,16 @@ import tensorflow as tf
 import numpy as np
 
 import stable_baselines.common.tf_util as tf_util
-<<<<<<< HEAD
-=======
 from stable_baselines.common.tf_util import total_episode_reward_logger
->>>>>>> upstream/master
 from stable_baselines.common import explained_variance, zipsame, dataset, fmt_row, colorize, ActorCriticRLModel, \
     SetVerbosity, TensorboardWriter
 from stable_baselines import logger
 from stable_baselines.common.mpi_adam import MpiAdam
 from stable_baselines.common.cg import conjugate_gradient
 from stable_baselines.common.policies import ActorCriticPolicy
-<<<<<<< HEAD
-from stable_baselines.a2c.utils import total_episode_reward_logger
-from stable_baselines.trpo_mpi.utils import traj_segment_generator, add_vtarg_and_adv, flatten_lists
-=======
 from stable_baselines.common.misc_util import flatten_lists
 from stable_baselines.common.runners import traj_segment_generator
 from stable_baselines.trpo_mpi.utils import add_vtarg_and_adv
->>>>>>> upstream/master
 
 
 class TRPO(ActorCriticRLModel):
@@ -107,10 +99,6 @@ class TRPO(ActorCriticRLModel):
         self.initial_state = None
         self.params = None
         self.summary = None
-<<<<<<< HEAD
-        self.episode_reward = None
-=======
->>>>>>> upstream/master
 
         if _init_setup_model:
             self.setup_model()
@@ -281,38 +269,27 @@ class TRPO(ActorCriticRLModel):
                     tf_util.function([observation, old_policy.obs_ph, action, atarg, ret],
                                      [self.summary, tf_util.flatgrad(optimgain, var_list)] + losses)
 
-<<<<<<< HEAD
-=======
     def _initialize_dataloader(self):
         """Initialize dataloader."""
         batchsize = self.timesteps_per_batch // self.d_step
         self.expert_dataset.init_dataloader(batchsize)
 
->>>>>>> upstream/master
     def learn(self, total_timesteps, callback=None, log_interval=100, tb_log_name="TRPO",
               reset_num_timesteps=True):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
-<<<<<<< HEAD
-=======
         callback = self._init_callback(callback)
->>>>>>> upstream/master
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
             self._setup_learn()
 
             with self.sess.as_default():
-<<<<<<< HEAD
-                seg_gen = traj_segment_generator(self.policy_pi, self.env, self.timesteps_per_batch,
-                                                 reward_giver=self.reward_giver, gail=self.using_gail)
-=======
                 callback.on_training_start(locals(), globals())
 
                 seg_gen = traj_segment_generator(self.policy_pi, self.env, self.timesteps_per_batch,
                                                  reward_giver=self.reward_giver,
                                                  gail=self.using_gail, callback=callback)
->>>>>>> upstream/master
 
                 episodes_so_far = 0
                 timesteps_so_far = 0
@@ -320,22 +297,12 @@ class TRPO(ActorCriticRLModel):
                 t_start = time.time()
                 len_buffer = deque(maxlen=40)  # rolling buffer for episode lengths
                 reward_buffer = deque(maxlen=40)  # rolling buffer for episode rewards
-<<<<<<< HEAD
-                self.episode_reward = np.zeros((self.n_envs,))
-=======
->>>>>>> upstream/master
 
                 true_reward_buffer = None
                 if self.using_gail:
                     true_reward_buffer = deque(maxlen=40)
 
-<<<<<<< HEAD
-                    # Initialize dataloader
-                    batchsize = self.timesteps_per_batch // self.d_step
-                    self.expert_dataset.init_dataloader(batchsize)
-=======
                     self._initialize_dataloader()
->>>>>>> upstream/master
 
                     #  Stats not used for now
                     # TODO: replace with normal tb logging
@@ -344,16 +311,7 @@ class TRPO(ActorCriticRLModel):
                     #  ep_stats = Stats(["True_rewards", "Rewards", "Episode_length"])
 
                 while True:
-<<<<<<< HEAD
-                    if callback is not None:
-                        # Only stop training if return value is False, not when it is None. This is for backwards
-                        # compatibility with callbacks that have no return statement.
-                        if callback(locals(), globals()) is False:
-                            break
-                    if total_timesteps and timesteps_so_far >= total_timesteps:
-=======
                     if timesteps_so_far >= total_timesteps:
->>>>>>> upstream/master
                         break
 
                     logger.log("********** Iteration %i ************" % iters_so_far)
@@ -373,32 +331,16 @@ class TRPO(ActorCriticRLModel):
                     for k in range(self.g_step):
                         with self.timed("sampling"):
                             seg = seg_gen.__next__()
-<<<<<<< HEAD
-=======
 
                         # Stop training early (triggered by the callback)
                         if not seg.get('continue_training', True):  # pytype: disable=attribute-error
                             break
 
->>>>>>> upstream/master
                         add_vtarg_and_adv(seg, self.gamma, self.lam)
                         # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
                         observation, action = seg["observations"], seg["actions"]
                         atarg, tdlamret = seg["adv"], seg["tdlamret"]
 
-<<<<<<< HEAD
-
-                        vpredbefore = seg["vpred"]  # predicted value function before update
-                        atarg = (atarg - atarg.mean()) / atarg.std()  # standardized advantage function estimate
-
-                        # true_rew is the reward without discount
-                        if writer is not None:
-                            self.episode_reward = total_episode_reward_logger(self.episode_reward,
-                                                                              seg["true_rewards"].reshape(
-                                                                                  (self.n_envs, -1)),
-                                                                              seg["dones"].reshape((self.n_envs, -1)),
-                                                                              writer, self.num_timesteps)
-=======
                         vpredbefore = seg["vpred"]  # predicted value function before update
                         atarg = (atarg - atarg.mean()) / (atarg.std() + 1e-8)  # standardized advantage function estimate
 
@@ -409,7 +351,6 @@ class TRPO(ActorCriticRLModel):
                                                             (self.n_envs, -1)),
                                                         seg["dones"].reshape((self.n_envs, -1)),
                                                         writer, self.num_timesteps)
->>>>>>> upstream/master
 
                         args = seg["observations"], seg["observations"], seg["actions"], atarg
                         # Subsampling: see p40-42 of John Schulman thesis
@@ -477,11 +418,6 @@ class TRPO(ActorCriticRLModel):
                                 # list of tuples
                                 paramsums = MPI.COMM_WORLD.allgather((thnew.sum(), self.vfadam.getflat().sum()))
                                 assert all(np.allclose(ps, paramsums[0]) for ps in paramsums[1:])
-<<<<<<< HEAD
-                            
-=======
-
->>>>>>> upstream/master
                             for (loss_name, loss_val) in zip(self.loss_names, mean_losses):
                                 logger.record_tabular(loss_name, loss_val)
 
@@ -495,13 +431,10 @@ class TRPO(ActorCriticRLModel):
                                     grad = self.allmean(self.compute_vflossandgrad(mbob, mbob, mbret, sess=self.sess))
                                     self.vfadam.update(grad, self.vf_stepsize)
 
-<<<<<<< HEAD
-=======
                     # Stop training early (triggered by the callback)
                     if not seg.get('continue_training', True):  # pytype: disable=attribute-error
                         break
 
->>>>>>> upstream/master
                     logger.record_tabular("explained_variance_tdlam_before",
                                           explained_variance(vpredbefore, tdlamret))
 
@@ -567,19 +500,10 @@ class TRPO(ActorCriticRLModel):
                     if self.verbose >= 1 and self.rank == 0:
                         logger.dump_tabular()
 
-<<<<<<< HEAD
-        return self
-
-    def save(self, save_path, cloudpickle=False):
-        if self.using_gail and self.expert_dataset is not None:
-            # Exit processes to pickle the dataset
-            self.expert_dataset.prepare_pickling()
-=======
         callback.on_training_end()
         return self
 
     def save(self, save_path, cloudpickle=False):
->>>>>>> upstream/master
         data = {
             "gamma": self.gamma,
             "timesteps_per_batch": self.timesteps_per_batch,

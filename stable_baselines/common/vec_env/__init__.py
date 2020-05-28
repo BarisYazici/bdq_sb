@@ -1,11 +1,8 @@
-<<<<<<< HEAD
-=======
 from typing import Union
 from copy import deepcopy
 
 import gym
 
->>>>>>> upstream/master
 # flake8: noqa F401
 from stable_baselines.common.vec_env.base_vec_env import AlreadySteppingError, NotSteppingError, VecEnv, VecEnvWrapper, \
     CloudpickleWrapper
@@ -15,8 +12,6 @@ from stable_baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from stable_baselines.common.vec_env.vec_normalize import VecNormalize
 from stable_baselines.common.vec_env.vec_video_recorder import VecVideoRecorder
 from stable_baselines.common.vec_env.vec_check_nan import VecCheckNan
-<<<<<<< HEAD
-=======
 
 
 def unwrap_vec_normalize(env: Union[gym.Env, VecEnv]) -> Union[VecNormalize, None]:
@@ -55,4 +50,3 @@ def sync_envs_normalization(env: Union[gym.Env, VecEnv], eval_env: Union[gym.Env
         # Make pytype happy, in theory env and eval_env have the same type
         assert isinstance(eval_env_tmp, VecEnvWrapper), "the second env differs from the first env"
         eval_env_tmp = eval_env_tmp.venv
->>>>>>> upstream/master

@@ -1,33 +1,17 @@
 import time
 import warnings
-<<<<<<< HEAD
-from collections import deque
-
-import numpy as np
-=======
-
->>>>>>> upstream/master
 import tensorflow as tf
 from gym.spaces import Box, Discrete
 
 from stable_baselines import logger
 from stable_baselines.a2c.a2c import A2CRunner
 from stable_baselines.ppo2.ppo2 import Runner as PPO2Runner
-<<<<<<< HEAD
-from stable_baselines.a2c.utils import Scheduler, mse, \
-    total_episode_reward_logger
-from stable_baselines.acktr import kfac
-from stable_baselines.common import explained_variance, ActorCriticRLModel, tf_util, SetVerbosity, TensorboardWriter
-from stable_baselines.common.policies import ActorCriticPolicy, RecurrentActorCriticPolicy
-from stable_baselines.ppo2.ppo2 import safe_mean
-=======
 from stable_baselines.common.tf_util import mse, total_episode_reward_logger
 from stable_baselines.acktr import kfac
 from stable_baselines.common.schedules import Scheduler
 from stable_baselines.common import explained_variance, ActorCriticRLModel, tf_util, SetVerbosity, TensorboardWriter
 from stable_baselines.common.policies import ActorCriticPolicy, RecurrentActorCriticPolicy
 from stable_baselines.common.math_util import safe_mean
->>>>>>> upstream/master
 
 
 class ACKTR(ActorCriticRLModel):
@@ -73,16 +57,10 @@ class ACKTR(ActorCriticRLModel):
                  tensorboard_log=None, _init_setup_model=True, async_eigen_decomp=False, kfac_update=1,
                  gae_lambda=None, policy_kwargs=None, full_tensorboard_log=False, seed=None, n_cpu_tf_sess=1):
 
-<<<<<<< HEAD
-        super(ACKTR, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
-                                    _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs,
-                                    seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
-=======
         if nprocs is not None:
             warnings.warn("nprocs will be removed in a future version (v3.x.x) "
                           "use n_cpu_tf_sess instead", DeprecationWarning)
             n_cpu_tf_sess = nprocs
->>>>>>> upstream/master
 
         self.n_steps = n_steps
         self.gamma = gamma
@@ -94,25 +72,12 @@ class ACKTR(ActorCriticRLModel):
         self.learning_rate = learning_rate
         self.lr_schedule = lr_schedule
 
-<<<<<<< HEAD
-        if nprocs is not None:
-            warnings.warn("nprocs will be removed in a future version (v3.x.x) "
-                          "use n_cpu_tf_sess instead", DeprecationWarning)
-            self.n_cpu_tf_sess = nprocs
-
-=======
->>>>>>> upstream/master
         self.tensorboard_log = tensorboard_log
         self.async_eigen_decomp = async_eigen_decomp
         self.full_tensorboard_log = full_tensorboard_log
         self.kfac_update = kfac_update
         self.gae_lambda = gae_lambda
 
-<<<<<<< HEAD
-        self.graph = None
-        self.sess = None
-=======
->>>>>>> upstream/master
         self.actions_ph = None
         self.advs_ph = None
         self.rewards_ph = None
@@ -125,33 +90,16 @@ class ACKTR(ActorCriticRLModel):
         self.pg_fisher = None
         self.vf_fisher = None
         self.joint_fisher = None
-<<<<<<< HEAD
-        self.params = None
-=======
->>>>>>> upstream/master
         self.grads_check = None
         self.optim = None
         self.train_op = None
         self.q_runner = None
         self.learning_rate_schedule = None
-<<<<<<< HEAD
-        self.step = None
-=======
->>>>>>> upstream/master
         self.proba_step = None
         self.value = None
         self.initial_state = None
         self.n_batch = None
         self.summary = None
-<<<<<<< HEAD
-        self.episode_reward = None
-        self.trained = False
-        self.continuous_actions = False
-
-        if _init_setup_model:
-            self.setup_model()
-
-=======
         self.trained = False
         self.continuous_actions = False
 
@@ -170,7 +118,6 @@ class ACKTR(ActorCriticRLModel):
             return A2CRunner(
                 self.env, self, n_steps=self.n_steps, gamma=self.gamma)
 
->>>>>>> upstream/master
     def _get_pretrain_placeholders(self):
         policy = self.train_model
         if isinstance(self.action_space, Discrete):
@@ -338,10 +285,7 @@ class ACKTR(ActorCriticRLModel):
               reset_num_timesteps=True):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
-<<<<<<< HEAD
-=======
         callback = self._init_callback(callback)
->>>>>>> upstream/master
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
@@ -375,17 +319,6 @@ class ACKTR(ActorCriticRLModel):
 
             self.trained = True
 
-<<<<<<< HEAD
-            # Use GAE
-            if self.gae_lambda is not None:
-                runner = PPO2Runner(env=self.env, model=self, n_steps=self.n_steps, gamma=self.gamma, lam=self.gae_lambda)
-            else:
-                runner = A2CRunner(self.env, self, n_steps=self.n_steps, gamma=self.gamma)
-
-            self.episode_reward = np.zeros((self.n_envs,))
-
-=======
->>>>>>> upstream/master
             t_start = time.time()
             coord = tf.train.Coordinator()
             if self.q_runner is not None:
@@ -393,22 +326,6 @@ class ACKTR(ActorCriticRLModel):
             else:
                 enqueue_threads = []
 
-<<<<<<< HEAD
-            # Training stats (when using Monitor wrapper)
-            ep_info_buf = deque(maxlen=100)
-
-            for update in range(1, total_timesteps // self.n_batch + 1):
-                # pytype:disable=bad-unpacking
-                # true_reward is the reward without discount
-                if isinstance(runner, PPO2Runner):
-                    # We are using GAE
-                    obs, returns, masks, actions, values, _, states, ep_infos, true_reward = runner.run()
-                else:
-                    obs, states, returns, masks, actions, values, ep_infos, true_reward = runner.run()
-                # pytype:enable=bad-unpacking
-
-                ep_info_buf.extend(ep_infos)
-=======
             callback.on_training_start(locals(), globals())
 
             for update in range(1, total_timesteps // self.n_batch + 1):
@@ -433,7 +350,6 @@ class ACKTR(ActorCriticRLModel):
                     break
 
                 self.ep_info_buf.extend(ep_infos)
->>>>>>> upstream/master
                 policy_loss, value_loss, policy_entropy = self._train_step(obs, states, returns, masks, actions, values,
                                                                            self.num_timesteps // (self.n_batch + 1),
                                                                            writer)
@@ -441,23 +357,10 @@ class ACKTR(ActorCriticRLModel):
                 fps = int((update * self.n_batch) / n_seconds)
 
                 if writer is not None:
-<<<<<<< HEAD
-                    self.episode_reward = total_episode_reward_logger(self.episode_reward,
-                                                                      true_reward.reshape((self.n_envs, self.n_steps)),
-                                                                      masks.reshape((self.n_envs, self.n_steps)),
-                                                                      writer, self.num_timesteps)
-
-                if callback is not None:
-                    # Only stop training if return value is False, not when it is None. This is for backwards
-                    # compatibility with callbacks that have no return statement.
-                    if callback(locals(), globals()) is False:
-                        break
-=======
                     total_episode_reward_logger(self.episode_reward,
                                                 true_reward.reshape((self.n_envs, self.n_steps)),
                                                 masks.reshape((self.n_envs, self.n_steps)),
                                                 writer, self.num_timesteps)
->>>>>>> upstream/master
 
                 if self.verbose >= 1 and (update % log_interval == 0 or update == 1):
                     explained_var = explained_variance(values, returns)
@@ -468,18 +371,6 @@ class ACKTR(ActorCriticRLModel):
                     logger.record_tabular("policy_loss", float(policy_loss))
                     logger.record_tabular("value_loss", float(value_loss))
                     logger.record_tabular("explained_variance", float(explained_var))
-<<<<<<< HEAD
-                    if len(ep_info_buf) > 0 and len(ep_info_buf[0]) > 0:
-                        logger.logkv('ep_reward_mean', safe_mean([ep_info['r'] for ep_info in ep_info_buf]))
-                        logger.logkv('ep_len_mean', safe_mean([ep_info['l'] for ep_info in ep_info_buf]))
-                    logger.dump_tabular()
-
-                self.num_timesteps += self.n_batch + 1
-
-            coord.request_stop()
-            coord.join(enqueue_threads)
-
-=======
                     if len(self.ep_info_buf) > 0 and len(self.ep_info_buf[0]) > 0:
                         logger.logkv('ep_reward_mean', safe_mean([ep_info['r'] for ep_info in self.ep_info_buf]))
                         logger.logkv('ep_len_mean', safe_mean([ep_info['l'] for ep_info in self.ep_info_buf]))
@@ -489,7 +380,6 @@ class ACKTR(ActorCriticRLModel):
             coord.join(enqueue_threads)
 
         callback.on_training_end()
->>>>>>> upstream/master
         return self
 
     def save(self, save_path, cloudpickle=False):

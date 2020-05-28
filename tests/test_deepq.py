@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-from stable_baselines.deepq.experiments.custom_cartpole import main as main_custom
-=======
->>>>>>> upstream/master
 from stable_baselines.deepq.experiments.train_cartpole import main as train_cartpole
 from stable_baselines.deepq.experiments.enjoy_cartpole import main as enjoy_cartpole
 from stable_baselines.deepq.experiments.train_mountaincar import main as train_mountaincar
@@ -20,13 +16,6 @@ args.no_render = True
 args.max_timesteps = 200
 
 
-<<<<<<< HEAD
-def test_custom_cartpole():
-    main_custom(args)
-
-
-=======
->>>>>>> upstream/master
 def test_cartpole():
     train_cartpole(args)
     enjoy_cartpole(args)

@@ -1,30 +1,11 @@
 import numpy as np
-<<<<<<< HEAD
-
-from gym import Env
-=======
 from typing import Optional
 
 from gym import Env, Space
->>>>>>> upstream/master
 from gym.spaces import Discrete, MultiDiscrete, MultiBinary, Box
 
 
 class IdentityEnv(Env):
-<<<<<<< HEAD
-    def __init__(self, dim=1, ep_length=100):
-        """
-        Identity environment for testing purposes
-
-        :param dim: (int) the size of the dimensions you want to learn
-        :param ep_length: (int) the length of each episodes in timesteps
-        """
-        self.action_space = Discrete(dim)
-        self.observation_space = self.action_space
-        self.ep_length = ep_length
-        self.current_step = 0
-        self.dim = dim
-=======
     def __init__(self,
                  dim: Optional[int] = None,
                  space: Optional[Space] = None,
@@ -50,15 +31,11 @@ class IdentityEnv(Env):
         self.ep_length = ep_length
         self.current_step = 0
         self.num_resets = -1  # Becomes 0 after __init__ exits.
->>>>>>> upstream/master
         self.reset()
 
     def reset(self):
         self.current_step = 0
-<<<<<<< HEAD
-=======
         self.num_resets += 1
->>>>>>> upstream/master
         self._choose_next_state()
         return self.state
 
@@ -84,24 +61,6 @@ class IdentityEnvBox(IdentityEnv):
         """
         Identity environment for testing purposes
 
-<<<<<<< HEAD
-        :param dim: (int) the size of the dimensions you want to learn
-        :param low: (float) the lower bound of the box dim
-        :param high: (float) the upper bound of the box dim
-        :param eps: (float) the epsilon bound for correct value
-        :param ep_length: (int) the length of each episodes in timesteps
-        """
-        super(IdentityEnvBox, self).__init__(1, ep_length)
-        self.action_space = Box(low=low, high=high, shape=(1,), dtype=np.float32)
-        self.observation_space = self.action_space
-        self.eps = eps
-        self.reset()
-
-    def reset(self):
-        self.current_step = 0
-        self._choose_next_state()
-        return self.state
-=======
         :param low: (float) the lower bound of the box dim
         :param high: (float) the upper bound of the box dim
         :param eps: (float) the epsilon bound for correct value
@@ -110,7 +69,6 @@ class IdentityEnvBox(IdentityEnv):
         space = Box(low=low, high=high, shape=(1,), dtype=np.float32)
         super().__init__(ep_length=ep_length, space=space)
         self.eps = eps
->>>>>>> upstream/master
 
     def step(self, action):
         reward = self._get_reward(action)
@@ -119,38 +77,16 @@ class IdentityEnvBox(IdentityEnv):
         done = self.current_step >= self.ep_length
         return self.state, reward, done, {}
 
-<<<<<<< HEAD
-    def _choose_next_state(self):
-        self.state = self.observation_space.sample()
-
-=======
->>>>>>> upstream/master
     def _get_reward(self, action):
         return 1 if (self.state - self.eps) <= action <= (self.state + self.eps) else 0
 
 
 class IdentityEnvMultiDiscrete(IdentityEnv):
-<<<<<<< HEAD
-    def __init__(self, dim, ep_length=100):
-=======
     def __init__(self, dim=1, ep_length=100):
->>>>>>> upstream/master
         """
         Identity environment for testing purposes
 
         :param dim: (int) the size of the dimensions you want to learn
-<<<<<<< HEAD
-        :param ep_length: (int) the length of each episodes in timesteps
-        """
-        super(IdentityEnvMultiDiscrete, self).__init__(dim, ep_length)
-        self.action_space = MultiDiscrete([dim, dim])
-        self.observation_space = self.action_space
-        self.reset()
-
-
-class IdentityEnvMultiBinary(IdentityEnv):
-    def __init__(self, dim, ep_length=100):
-=======
         :param ep_length: (int) the length of each episode in timesteps
         """
         space = MultiDiscrete([dim, dim])
@@ -159,21 +95,11 @@ class IdentityEnvMultiBinary(IdentityEnv):
 
 class IdentityEnvMultiBinary(IdentityEnv):
     def __init__(self, dim=1, ep_length=100):
->>>>>>> upstream/master
         """
         Identity environment for testing purposes
 
         :param dim: (int) the size of the dimensions you want to learn
-<<<<<<< HEAD
-        :param ep_length: (int) the length of each episodes in timesteps
-        """
-        super(IdentityEnvMultiBinary, self).__init__(dim, ep_length)
-        self.action_space = MultiBinary(dim)
-        self.observation_space = self.action_space
-        self.reset()
-=======
         :param ep_length: (int) the length of each episode in timesteps
         """
         space = MultiBinary(dim)
         super().__init__(ep_length=ep_length, space=space)
->>>>>>> upstream/master

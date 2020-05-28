@@ -21,8 +21,6 @@ def is_image(tensor):
     return len(tensor.shape) == 3 and tensor.shape[-1] in [1, 3, 4]
 
 
-<<<<<<< HEAD
-=======
 def batch_to_seq(tensor_batch, n_batch, n_steps, flat=False):
     """
     Transform a batch of Tensors, into a sequence of Tensors for recurrent policies
@@ -69,15 +67,10 @@ def check_shape(tensors, shapes):
         assert tensor.get_shape().as_list() == shape, "id " + str(i) + " shape " + str(tensor.get_shape()) + str(shape)
         i += 1
 
->>>>>>> upstream/master
 # ================================================================
 # Mathematical utils
 # ================================================================
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 def huber_loss(tensor, delta=1.0):
     """
     Reference: https://en.wikipedia.org/wiki/Huber_loss
@@ -93,8 +86,6 @@ def huber_loss(tensor, delta=1.0):
     )
 
 
-<<<<<<< HEAD
-=======
 def sample(logits):
     """
     Creates a sampling Tensor for non deterministic policies
@@ -180,15 +171,10 @@ def q_explained_variance(q_pred, q_true):
     return 1.0 - (var_pred / var_y)
 
 
->>>>>>> upstream/master
 # ================================================================
 # Global session
 # ================================================================
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 def make_session(num_cpu=None, make_default=False, graph=None):
     """
     Returns a session that will use <num_cpu> CPU's only
@@ -259,10 +245,6 @@ def initialize(sess=None):
 # Theano-like Function
 # ================================================================
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 def function(inputs, outputs, updates=None, givens=None):
     """
     Take a bunch of tensorflow placeholders and expressions
@@ -316,11 +298,7 @@ class _Function(object):
         :param givens: (dict) the values known for the output
         """
         for inpt in inputs:
-<<<<<<< HEAD
-            if not hasattr(inpt, 'make_feed_dict') and not (isinstance(inpt, tf.Tensor)and len(inpt.op.inputs) == 0):
-=======
             if not hasattr(inpt, 'make_feed_dict') and not (isinstance(inpt, tf.Tensor) and len(inpt.op.inputs) == 0):
->>>>>>> upstream/master
                 assert False, "inputs should all be placeholders, constants, or have a make_feed_dict method"
         self.inputs = inputs
         updates = updates or []
@@ -354,10 +332,6 @@ class _Function(object):
 # Flat vectors
 # ================================================================
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 def var_shape(tensor):
     """
     get TensorFlow Tensor shape
@@ -460,10 +434,6 @@ class GetFlat(object):
 # retrieving variables
 # ================================================================
 
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
 def get_trainable_vars(name):
     """
     returns the trainable variables
@@ -497,8 +467,6 @@ def outer_scope_getter(scope, new_scope=""):
         val = getter(name, *args, **kwargs)
         return val
     return _getter
-<<<<<<< HEAD
-=======
 
 
 # ================================================================
@@ -535,4 +503,3 @@ def total_episode_reward_logger(rew_acc, rewards, masks, writer, steps):
                 rew_acc[env_idx] = sum(rewards[env_idx, dones_idx[-1, 0]:])
 
     return rew_acc
->>>>>>> upstream/master

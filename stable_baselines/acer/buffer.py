@@ -43,11 +43,6 @@ class Buffer(object):
     def has_atleast(self, frames):
         """
         Check to see if the buffer has at least the asked number of frames
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> upstream/master
         :param frames: (int) The number of frames checked
         :return: (bool) number of frames in buffer >= number asked
         """
@@ -58,11 +53,6 @@ class Buffer(object):
     def can_sample(self):
         """
         Check if the buffer has at least one frame
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> upstream/master
         :return: (bool) if the buffer has at least one frame
         """
         return self.num_in_buffer > 0
@@ -70,11 +60,6 @@ class Buffer(object):
     def decode(self, enc_obs):
         """
         Get the stacked frames of an observation
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> upstream/master
         :param enc_obs: ([float]) the encoded observation
         :return: ([float]) the decoded observation
         """
@@ -101,11 +86,6 @@ class Buffer(object):
     def put(self, enc_obs, actions, rewards, mus, dones, masks):
         """
         Adds a frame to the buffer
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> upstream/master
         :param enc_obs: ([float]) the encoded observation
         :param actions: ([float]) the actions
         :param rewards: ([float]) the rewards
@@ -138,11 +118,6 @@ class Buffer(object):
     def take(self, arr, idx, envx):
         """
         Reads a frame from a list and index for the asked environment ids
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> upstream/master
         :param arr: (np.ndarray) the array that is read
         :param idx: ([int]) the idx that are read
         :param envx: ([int]) the idx for the environments
@@ -157,11 +132,6 @@ class Buffer(object):
     def get(self):
         """
         randomly read a frame from the buffer
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> upstream/master
         :return: ([float], [float], [float], [float], [bool], [float])
                  observations, actions, rewards, mus, dones, maskes
         """

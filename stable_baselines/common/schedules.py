@@ -106,8 +106,6 @@ class LinearSchedule(Schedule):
     def value(self, step):
         fraction = min(float(step) / self.schedule_timesteps, 1.0)
         return self.initial_p + fraction * (self.final_p - self.initial_p)
-<<<<<<< HEAD
-=======
 
 
 def get_schedule_fn(value_schedule):
@@ -254,4 +252,3 @@ class Scheduler(object):
         :return: (float) the value for the current number of iterations
         """
         return self.initial_value * self.schedule(steps / self.nvalues)
->>>>>>> upstream/master
