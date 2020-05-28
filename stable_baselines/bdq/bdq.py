@@ -280,24 +280,38 @@ class BDQ(OffPolicyRLModel):
                 env_action = action
                 reset = False
                 new_obs, rew, done, info = self.env.step(env_action)
-                
+
+                self.num_timesteps += 1
+
                 # Stop training if return value is False
                 if callback.on_step() is False:
                     break
-
+                # Store only the unnormalized version
+                if self._vec_normalize_env is not None:
+                    new_obs_ = self._vec_normalize_env.get_original_obs().squeeze()
+                    reward_ = self._vec_normalize_env.get_original_reward().squeeze()
+                else:
+                    # Avoid changing the original ones
+                    obs_, new_obs_, reward_ = obs, new_obs, rew
                 # Store transition in the replay buffer.
                 self.replay_buffer.add(obs, action_idxes, rew, new_obs, float(done))
                 obs = new_obs
+                # Save the unnormalized observation
+                if self._vec_normalize_env is not None:
+                    obs_ = new_obs_
 
                 if writer is not None:
-                    ep_rew = np.array([rew]).reshape((1, -1))
+                    ep_rew = np.array([reward_]).reshape((1, -1))
                     ep_done = np.array([done]).reshape((1, -1))
-                    self.episode_reward = total_episode_reward_logger(self.episode_reward, ep_rew, ep_done, writer,
-                                                                      self.num_timesteps)
+                    tf_util.total_episode_reward_logger(self.episode_reward, ep_rew, ep_done, writer,
+                                                        self.num_timesteps)
+                    # self.episode_reward = total_episode_reward_logger(self.episode_reward, ep_rew, ep_done, writer,
+                    #                                                   self.num_timesteps)
 
-                episode_rewards[-1] += rew
+                # episode_rewards[-1] += rew
+                episode_rewards[-1] += reward_
                 if done:
-                    print("ep number", len(episode_rewards))
+                    # print("ep number", len(episode_rewards))
                     maybe_is_success = info.get('is_success')
                     if maybe_is_success is not None:
                         episode_successes.append(float(maybe_is_success))
@@ -370,8 +384,6 @@ class BDQ(OffPolicyRLModel):
                     logger.record_tabular("% time spent exploring",
                                           int(100 * self.exploration.value(self.num_timesteps)))
                     logger.dump_tabular()
-
-                self.num_timesteps += 1
         
         callback.on_training_end()
         return self
