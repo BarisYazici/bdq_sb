@@ -18,6 +18,7 @@ from stable_baselines.bdq.policies import BDQPolicy, ActionBranching
 class BDQ(OffPolicyRLModel):
     """
     The BDQ model class.
+    BDQ paper: https://arxiv.org/abs/1711.08946
     DQN paper: https://arxiv.org/abs/1312.5602
     Dueling DQN: https://arxiv.org/abs/1511.06581
     Double-Q Learning: https://arxiv.org/abs/1509.06461
@@ -63,7 +64,6 @@ class BDQ(OffPolicyRLModel):
                  prioritized_replay_eps=1e-6, param_noise=False, n_cpu_tf_sess=None, verbose=0, tensorboard_log=None,
                  _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False, seed=None):
 
-        # TODO: replay_buffer refactoring
         super(BDQ, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose, policy_base=BDQPolicy,
                                   requires_vec_env=False, policy_kwargs=policy_kwargs, seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
         self.param_noise = param_noise
@@ -127,8 +127,8 @@ class BDQ(OffPolicyRLModel):
             if issubclass(self.policy, ActionBranching): self.bdq = True
 
             # BDQ allows continous output x
-            # assert not self.bdq and not isinstance(self.action_space, gym.spaces.Box), \
-            #     "Error: DQN cannot output a gym.spaces.Box action space."
+            assert isinstance(self.action_space, gym.spaces.Box), \
+                "Error: BDQ cannot output a gym.spaces.Discrete action space."
 
             # If the policy is wrap in functool.partial (e.g. to disable dueling)
             # unwrap it to check the class type
@@ -136,7 +136,7 @@ class BDQ(OffPolicyRLModel):
                 test_policy = self.policy.func
             else:
                 test_policy = self.policy
-            assert issubclass(test_policy, BDQPolicy), "Error: the input policy for the DQN model must be " \
+            assert issubclass(test_policy, BDQPolicy), "Error: the input policy for the BDQ model must be " \
                                                        "an instance of BDQPolicy."
 
             self.graph = tf.Graph()
@@ -163,7 +163,6 @@ class BDQ(OffPolicyRLModel):
                 )
                 self.proba_step = self.step_model.proba_step
                 self.params = tf_util.get_trainable_vars("bdq")
-                print("trainable vars", self.params)
                 # Initialize the parameters and copy them to the target network.
                 tf_util.initialize(self.sess)
                 self.update_target(sess=self.sess)
@@ -201,6 +200,7 @@ class BDQ(OffPolicyRLModel):
 
             if self.epsilon_greedy:
                 approximate_num_iters = 2e6 / 4
+                # TODO Decide which schedule type to use
                 # self.exploration = PiecewiseSchedule([(0, 1.0),
                 #                                 (approximate_num_iters / 50, 0.1), 
                 #                                 (approximate_num_iters / 5, 0.01) 
@@ -225,12 +225,6 @@ class BDQ(OffPolicyRLModel):
             self.episode_reward = np.zeros((1,))
 
             for _ in range(total_timesteps):
-                # self.env.render()
-                # if callback is not None:
-                #     # Only stop training if return value is False, not when it is None. This is for backwards
-                #     # compatibility with callbacks that have no return statement.
-                #     if callback(locals(), globals()) is False:
-                #         break
                 # Take action and update exploration to the newest value
                 kwargs = {}
                 if not self.param_noise:
@@ -388,14 +382,10 @@ class BDQ(OffPolicyRLModel):
 
     def predict(self, observation, eval_std=0.01, state=None, mask=None, deterministic=True):
         observation = np.array(observation)
-        # vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
-
         observation = observation.reshape((-1,) + self.observation_space.shape)
+        
         with self.sess.as_default():
             actions, _, _, _ = self.step_model.step(observation, eval_std=eval_std, deterministic=deterministic)
-
-        # if not vectorized_env:
-        #     actions = actions[0]
 
         return actions, None
 
