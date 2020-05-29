@@ -139,10 +139,9 @@ def build_act(q_func, ob_space, ac_space, stochastic_ph, update_eps_ph, sess):
     eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
 
     policy = q_func(sess, ob_space, ac_space, 1, 1, None)
-    print("actor q_func", policy.q_values)
     obs_phs = (policy.obs_ph, policy.processed_obs)
     deterministic_actions = tf.argmax(policy.q_values, axis=1)
-    
+
     batch_size = tf.shape(policy.obs_ph)[0]
     n_actions = ac_space.nvec if isinstance(ac_space, MultiDiscrete) else ac_space.n
     random_actions = tf.random_uniform(tf.stack([batch_size]), minval=0, maxval=n_actions, dtype=tf.int64)
@@ -371,16 +370,12 @@ def build_train(q_func, ob_space, ac_space, optimizer, sess, grad_norm_clipping=
         with tf.variable_scope("step_model", reuse=True, custom_getter=tf_util.outer_scope_getter("step_model")):
             step_model = q_func(sess, ob_space, ac_space, 1, 1, None, reuse=True, obs_phs=obs_phs)
         q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/model")
-        print("Step model ", step_model.q_values)
-        print("q_ function vars to optimize ", q_func_vars)
         # target q network evaluation
 
         with tf.variable_scope("target_q_func", reuse=False):
             target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, reuse=False)
         target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                                scope=tf.get_variable_scope().name + "/target_q_func")
-        print("target q_func ", target_policy.q_values)
-        print("target q-func vars ", target_q_func_vars)
 
         # compute estimate of best possible value starting from state at t + 1
         double_q_values = None
@@ -390,7 +385,6 @@ def build_train(q_func, ob_space, ac_space, optimizer, sess, grad_norm_clipping=
                 double_policy = q_func(sess, ob_space, ac_space, 1, 1, None, reuse=True)
                 double_q_values = double_policy.q_values
                 double_obs_ph = double_policy.obs_ph
-        print("double q_func ", double_policy.q_values)
 
     with tf.variable_scope("loss", reuse=reuse):
         # set up placeholders

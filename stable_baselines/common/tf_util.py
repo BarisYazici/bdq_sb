@@ -71,6 +71,7 @@ def check_shape(tensors, shapes):
 # Mathematical utils
 # ================================================================
 
+
 def huber_loss(tensor, delta=1.0):
     """
     Reference: https://en.wikipedia.org/wiki/Huber_loss
@@ -175,6 +176,7 @@ def q_explained_variance(q_pred, q_true):
 # Global session
 # ================================================================
 
+
 def make_session(num_cpu=None, make_default=False, graph=None):
     """
     Returns a session that will use <num_cpu> CPU's only
@@ -244,6 +246,7 @@ def initialize(sess=None):
 # ================================================================
 # Theano-like Function
 # ================================================================
+
 
 def function(inputs, outputs, updates=None, givens=None):
     """
@@ -331,6 +334,7 @@ class _Function(object):
 # ================================================================
 # Flat vectors
 # ================================================================
+
 
 def var_shape(tensor):
     """
@@ -433,6 +437,7 @@ class GetFlat(object):
 # ================================================================
 # retrieving variables
 # ================================================================
+
 
 def get_trainable_vars(name):
     """

@@ -1017,10 +1017,12 @@ class OffPolicyRLModel(BaseRLModel):
         :param kwargs: extra arguments to change the model when loading
         """
         data, params = cls._load_from_file(load_path, custom_objects=custom_objects)
+
         if 'policy_kwargs' in kwargs and kwargs['policy_kwargs'] != data['policy_kwargs']:
             raise ValueError("The specified policy kwargs do not equal the stored policy kwargs. "
                              "Stored kwargs: {}, specified kwargs: {}".format(data['policy_kwargs'],
                                                                               kwargs['policy_kwargs']))
+
         model = cls(policy=data["policy"], env=None, _init_setup_model=False)
         model.__dict__.update(data)
         model.__dict__.update(kwargs)
@@ -1030,6 +1032,7 @@ class OffPolicyRLModel(BaseRLModel):
         model.load_parameters(params)
 
         return model
+
 
 class _UnvecWrapper(VecEnvWrapper):
     def __init__(self, venv):
