@@ -323,7 +323,7 @@ class ActionBranching(BDQPolicy):
                         actions.append(a_stoch)
                         out_of_range_action = False
 
-        return actions[None], q_values, actions_proba, None
+        return actions, q_values, actions_proba, None
 
     def proba_step(self, obs, state=None, mask=None):
         return self.sess.run(self.policy_proba, {self.obs_ph: obs})
