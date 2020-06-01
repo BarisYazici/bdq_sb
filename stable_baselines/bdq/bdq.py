@@ -382,23 +382,27 @@ class BDQ(OffPolicyRLModel):
 
     def predict(self, observation, eval_std=0.01, state=None, mask=None, deterministic=True):
         observation = np.array(observation)
+        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+
         observation = observation.reshape((-1,) + self.observation_space.shape)
-        
         with self.sess.as_default():
             actions, _, _, _ = self.step_model.step(observation, eval_std=eval_std, deterministic=deterministic)
+        
+        if not vectorized_env:
+            actions = actions[0]
 
         return actions, None
 
     def action_probability(self, observation, state=None, mask=None, actions=None, logp=False):
         observation = np.array(observation)
-        # vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
         actions_proba = self.proba_step(observation, state, mask)
 
         if actions is not None:  # comparing the action distribution, to given actions
             actions = np.array([actions])
-            # assert isinstance(self.action_space, gym.spaces.Discrete)
+            assert isinstance(self.action_space, gym.spaces.Box)
             actions = actions.reshape((-1,))
             assert observation.shape[0] == actions.shape[0], "Error: batch sizes differ for actions and observations."
             actions_proba = actions_proba[np.arange(actions.shape[0]), actions]
@@ -407,10 +411,10 @@ class BDQ(OffPolicyRLModel):
             if logp:
                 actions_proba = np.log(actions_proba)
 
-        # if not vectorized_env:
-        #     if state is not None:
-        #         raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
-        #     actions_proba = actions_proba[0]
+        if not vectorized_env:
+            if state is not None:
+                raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
+            actions_proba = actions_proba[0]
 
         return actions_proba
 

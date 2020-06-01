@@ -312,7 +312,7 @@ class ActionBranching(BDQPolicy):
         if deterministic:
             actions = actions_greedy
         else:
-            actions = []
+            actions = np.array([])
             for index in range(len(actions_greedy)): 
                 a_greedy = actions_greedy[index]
                 out_of_range_action = True 
@@ -320,10 +320,10 @@ class ActionBranching(BDQPolicy):
                     a_stoch = np.random.normal(loc=a_greedy, scale=eval_std)
                     a_idx_stoch = np.rint((a_stoch + self.high[index]) / self.actions_range[index] * self.num_action_grains)
                     if a_idx_stoch >= 0 and a_idx_stoch < self.num_actions_pad:
-                        actions.append(a_stoch)
+                        actions = np.append(actions, a_stoch)
                         out_of_range_action = False
 
-        return actions, q_values, actions_proba, None
+        return actions[None], q_values, actions_proba, None
 
     def proba_step(self, obs, state=None, mask=None):
         return self.sess.run(self.policy_proba, {self.obs_ph: obs})
