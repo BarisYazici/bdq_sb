@@ -1,3 +1,4 @@
+import os
 import sys
 import subprocess
 from setuptools import setup, find_packages
@@ -7,31 +8,41 @@ if sys.version_info.major != 3:
     print('This Python is only compatible with Python 3, but you are running '
           'Python {}. The installation will likely fail.'.format(sys.version_info.major))
 
+# Read version from file
+with open(os.path.join('stable_baselines', 'version.txt'), 'r') as file_handler:
+    __version__ = file_handler.read().strip()
+
+
 # Check tensorflow installation to avoid
 # breaking pre-installed tf gpu
-install_tf, tf_gpu = False, False
-try:
-    import tensorflow as tf
-    if tf.__version__ < LooseVersion('1.8.0'):
+def find_tf_dependency():
+    install_tf, tf_gpu = False, False
+    try:
+        import tensorflow as tf
+        if tf.__version__ < LooseVersion('1.8.0'):
+            install_tf = True
+            # check if a gpu version is needed
+            tf_gpu = tf.test.is_gpu_available()
+    except ImportError:
         install_tf = True
-        # check if a gpu version is needed
-        tf_gpu = tf.test.is_gpu_available()
-except ImportError:
-    install_tf = True
-    # Check if a nvidia gpu is present
-    for command in ['nvidia-smi', '/usr/bin/nvidia-smi', 'nvidia-smi.exe']:
-        try:
-            if subprocess.call([command]) == 0:
-                tf_gpu = True
-                break
-        except IOError:  # command does not exist / is not executable
-            pass
+        # Check if a nvidia gpu is present
+        for command in ['nvidia-smi', '/usr/bin/nvidia-smi', 'nvidia-smi.exe']:
+            try:
+                if subprocess.call([command]) == 0:
+                    tf_gpu = True
+                    break
+            except IOError:  # command does not exist / is not executable
+                pass
+        if os.environ.get('USE_GPU') == 'True':  # force GPU even if not auto-detected
+            tf_gpu = True
 
-tf_dependency = []
-if install_tf:
-    tf_dependency = ['tensorflow-gpu>=1.8.0,<2.0.0'] if tf_gpu else ['tensorflow>=1.8.0,<2.0.0']
-    if tf_gpu:
-        print("A GPU was detected, tensorflow-gpu will be installed")
+    tf_dependency = []
+    if install_tf:
+        tf_dependency = ['tensorflow-gpu>=1.8.0,<2.0.0'] if tf_gpu else ['tensorflow>=1.8.0,<2.0.0']
+        if tf_gpu:
+            print("A GPU was detected, tensorflow-gpu will be installed")
+
+    return tf_dependency
 
 
 long_description = """
@@ -108,10 +119,10 @@ setup(name='stable_baselines',
       packages=[package for package in find_packages()
                 if package.startswith('stable_baselines')],
       package_data={
-          'stable_baselines': ['py.typed'],
+          'stable_baselines': ['py.typed', 'version.txt'],
       },
       install_requires=[
-          'gym[atari,classic_control]>=0.10.9',
+          'gym[atari,classic_control]>=0.11',
           'scipy',
           'joblib',
           'cloudpickle>=0.5.5',
@@ -119,7 +130,7 @@ setup(name='stable_baselines',
           'numpy',
           'pandas',
           'matplotlib'
-      ] + tf_dependency,
+      ] + find_tf_dependency(),
       extras_require={
         'mpi': [
             'mpi4py',
@@ -146,7 +157,7 @@ setup(name='stable_baselines',
       license="MIT",
       long_description=long_description,
       long_description_content_type='text/markdown',
-      version="2.9.0",
+      version=__version__,
       )
 
 # python setup.py sdist

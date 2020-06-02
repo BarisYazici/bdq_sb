@@ -57,7 +57,6 @@ def test_load_parameters(request, model_class):
     comparisons = [np.all(np.isclose(new_params[key], random_params[key])) for key in random_params.keys()]
     assert all(comparisons), "Parameters of model are not the same as provided ones."
 
-
     # Now test the backwards compatibility with params being a list instead of a dict.
     # Get the ordering of parameters.
     tf_param_list = model.get_parameter_list()
@@ -108,7 +107,6 @@ def test_load_parameters(request, model_class):
     finally:
         if os.path.exists(model_fname):
             os.remove(model_fname)
-
 
     # Test `exact_match` functionality of load_parameters
     original_actions_probas = model.action_probability(observations, actions=actions)

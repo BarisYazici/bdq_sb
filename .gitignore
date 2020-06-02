@@ -39,4 +39,8 @@ src
 *.egg-info
 .cache
 
+.vscode
+
 MUJOCO_LOG.TXT
+
+tensorboard_logs
