@@ -1,8 +1,6 @@
-from stable_baselines.bdq.policies import MlpPolicy, CnnPolicy, LnMlpPolicy, LnCnnPolicy, ActionBranching
+from stable_baselines.bdq.policies import ActionBranching, LnMlpActPolicy
 from stable_baselines.bdq.build_graph import build_act, build_train  # noqa
 from stable_baselines.bdq.bdq import BDQ
-from stable_baselines.bdq.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer  # noqa
-
 
 def wrap_atari_dqn(env):
     """
