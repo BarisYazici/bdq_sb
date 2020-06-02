@@ -370,15 +370,8 @@ def build_act(q_func, ob_space, ac_space, sess, num_actions,
     eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
 
     policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions)
-    # print("actor q_function", policy.q_values)
     obs_phs = (policy.obs_ph, policy.processed_obs)
 
-    # observations_ph = tf_util.ensure_tf_input(make_obs_ph(ob_space,"observation"))
-    # stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic") 
-    # update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
-    # q_values = q_func(observations_ph.get(), sess, ob_space, ac_space, 1, 1, None,
-    #                   num_actions, scope="q_func")
-    # q_values = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, scope="q_func")
     assert (num_action_streams >= 1), "number of action branches is not acceptable, has to be >=1"
 
     # TODO better: enable non-uniform number of sub-actions per joint
@@ -477,50 +470,35 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
     with tf.variable_scope(scope, reuse=reuse):
         act_f, obs_phs = build_act(q_func, ob_space, ac_space, sess, num_actions, 
                                    num_action_streams, stochastic_ph, update_eps_ph)
-        # Set up placeholders
-        # obs_phs = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_t"))
-        # print(num_action_streams)
 
         # Q-network evaluation
         with tf.variable_scope("step_model", reuse=True, custom_getter=tf_util.outer_scope_getter("step_model")):
             step_model = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions, 
                                 reuse=True, obs_phs=obs_phs) # reuse parameters from act
-            # q_t = q_func(obs_phs.get(), num_actions, scope="q_func", reuse=True) # reuse parameters from act
-        # q_func_vars = U.scope_vars(U.absolute_scope_name("q_func"))
         q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/model")
-        # print("q_function to optimize", step_model.q_values)
-        # print("qfunction parameters", q_func_vars)
-        # Target Q-network evalution
 
+        # Target Q-network evalution
         with tf.variable_scope("target_q_func", reuse=False):
             target_policy = q_func(sess, ob_space, ac_space, 1, 1, None, 
                                 num_actions, reuse=False)
         target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                             scope=tf.get_variable_scope().name + "/target_q_func")
-        # print("target q_func", target_policy.q_values)
-        # print("target q_func vars", target_q_func_vars)
-        
+
         # compute estimate of best possible value starting from state at t + 1
-        # double_q_values = None
         double_obs_ph = target_policy.obs_ph
         if double_q: 
             with tf.variable_scope("q_func", reuse=True, custom_getter=tf_util.outer_scope_getter("q_func")):
-                # selection_q_tp1 = q_func(obs_tp1_input, num_actions, scope="q_func", reuse=True)
                 selection_q_tp1 = q_func(sess, ob_space, ac_space, 1, 1, None,
                                         num_actions, reuse=True)
-                # double_q_values = selection_q_tp1.q_values
                 double_obs_ph = selection_q_tp1.obs_ph
         else: 
-            # selection_q_tp1 = q_tp1
             selection_q_tp1 = target_policy
-        # print("double q_func", selection_q_tp1.q_values)
 
         num_actions_pad = num_actions//num_action_streams  
     
     with tf.variable_scope("loss", reuse=reuse):
         act_t_ph = tf.placeholder(tf.int32, [None, num_action_streams], name="action")
         rew_t_ph = tf.placeholder(tf.float32, [None], name="reward")
-        # obs_tp1_input = tf_util.ensure_tf_input(make_obs_ph(ob_space, "obs_tp1"))
         done_mask_ph = tf.placeholder(tf.float32, [None], name="done")
         importance_weights_ph = tf.placeholder(tf.float32, [None], name="weight")
 
