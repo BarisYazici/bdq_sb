@@ -107,11 +107,9 @@ class ActionBranching(BDQPolicy):
             # Create the shared network module
             with tf.variable_scope('common_net'):
                 if feature_extraction == "cnn":
-                    print("inside cnn featrure ext")
                     extracted_features = cnn_extractor(self.processed_obs, **kwargs)
                     out = extracted_features
                 else:
-                    print("inside mlp featrure ext")
                     out = tf.layers.flatten(self.processed_obs)
                     for hidden in hiddens_common:
                         out = tf_layers.fully_connected(out, num_outputs=hidden, activation_fn=None)
