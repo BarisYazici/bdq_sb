@@ -281,7 +281,7 @@ class MlpActPolicy(ActionBranching):
         super(MlpActPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, 
                                           num_actions, distributed_single_stream=distributed_single_stream, reuse=reuse,
                                           aggregator='reduceLocalMean', feature_extraction="mlp", obs_phs=obs_phs, 
-                                          dueling=dueling, layer_norm=False, **_kwargs)
+                                          dueling=dueling, **_kwargs)
 
 class CnnActPolicy(ActionBranching):
     """
