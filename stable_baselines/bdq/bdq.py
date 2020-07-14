@@ -223,6 +223,9 @@ class BDQ(OffPolicyRLModel):
             obs = self.env.reset()
             reset = True
             self.episode_reward = np.zeros((1,))
+            # Retrieve unnormalized observation for saving into the buffer
+            if self._vec_normalize_env is not None:
+                obs_ = self._vec_normalize_env.get_original_obs().squeeze()
 
             for _ in range(total_timesteps):
                 # Take action and update exploration to the newest value
