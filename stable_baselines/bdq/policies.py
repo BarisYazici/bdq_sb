@@ -101,8 +101,8 @@ class ActionBranching(BDQPolicy):
                 assert (aggregator is None), 'no aggregator method to be set when not using dueling architecture'
                 assert (not hiddens_value), 'state-value network layer size has to be empty when not using dueling architecture'
 
-            if self.num_action_branches < 2 and independent: 
-                assert False, 'independent only makes sense when there are more than one action dimension'
+            # if self.num_action_branches < 2 and independent: 
+                # assert False, 'independent only makes sense when there are more than one action dimension'
 
             # Create the shared network module
             with tf.variable_scope('common_net'):

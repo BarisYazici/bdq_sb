@@ -368,7 +368,6 @@ def build_act(q_func, ob_space, ac_space, sess, num_actions,
 `       See the top of the file for details.
     """
     eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
-
     policy = q_func(sess, ob_space, ac_space, 1, 1, None, num_actions)
     obs_phs = (policy.obs_ph, policy.processed_obs)
 
@@ -400,7 +399,7 @@ def build_act(q_func, ob_space, ac_space, sess, num_actions,
     return act, obs_phs
 
 def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_streams, 
-                batch_size, learning_rate=5e-4, aggregator='reduceLocalMean', optimizer_name="Adam", grad_norm_clipping=None,
+                batch_size, learning_rate=1e-4, aggregator='reduceLocalMean', optimizer_name="Adam", grad_norm_clipping=None,
                 gamma=0.99, double_q=True, scope="bdq", reuse=None, losses_version=2, 
                 independent=False, dueling=True, target_version="mean", loss_type="L2", full_tensorboard_log=False):
     """Creates the act function:
@@ -616,8 +615,6 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
             elif len(obs_phs[0].shape) == 1:
                 tf.summary.histogram('observation', obs_phs[0])
 
-        # optimize_expr = optimizer.apply_gradients(gradients)
-
         summary = tf.summary.merge_all()
 
         train = tf_util.function(
@@ -630,7 +627,7 @@ def build_train(q_func, ob_space, ac_space, sess, num_actions, num_action_stream
                 done_mask_ph,
                 importance_weights_ph
             ],
-            outputs=[summary, td_error],
+            outputs=[summary, td_error, mean_loss],
             updates=[optimize_expr]
         )
         update_target = tf_util.function([], [], updates=[update_target_expr])
