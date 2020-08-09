@@ -64,7 +64,7 @@ class SAC(OffPolicyRLModel):
                  gradient_steps=1, target_entropy='auto', action_noise=None,
                  random_exploration=0.0, verbose=0, tensorboard_log=None,
                  _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False,
-                 seed=None, n_cpu_tf_sess=None):
+                 seed=None, log_dir=None, n_cpu_tf_sess=None):
 
         super(SAC, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose,
                                   policy_base=SACPolicy, requires_vec_env=False, policy_kwargs=policy_kwargs,
@@ -119,6 +119,10 @@ class SAC(OffPolicyRLModel):
         self.processed_obs_ph = None
         self.processed_next_obs_ph = None
         self.log_ent_coef = None
+
+        self.log_dir = log_dir
+        if self.log_dir is not None:
+            self.log_csv = logger.CSVOutputFormat(self.log_dir+"/logs.csv")
 
         if _init_setup_model:
             self.setup_model()
@@ -489,8 +493,16 @@ class SAC(OffPolicyRLModel):
 
                 num_episodes = len(episode_rewards)
                 # Display training infos
+                kvs = {}
                 if self.verbose >= 1 and done and log_interval is not None and len(episode_rewards) % log_interval == 0:
                     fps = int(step / (time.time() - start_time))
+                    kvs["episodes"] = num_episodes
+                    kvs["mean_rew"] = mean_reward
+                    kvs["current_lr"] = current_lr
+                    kvs["success_rate"] = np.mean(episode_successes[-100:])
+                    kvs["total_timesteps"] = self.num_timesteps
+                
+                    
                     logger.logkv("episodes", num_episodes)
                     logger.logkv("mean 100 episode reward", mean_reward)
                     if len(self.ep_info_buf) > 0 and len(self.ep_info_buf[0]) > 0:
@@ -505,6 +517,8 @@ class SAC(OffPolicyRLModel):
                     if len(infos_values) > 0:
                         for (name, val) in zip(self.infos_names, infos_values):
                             logger.logkv(name, val)
+                            kvs[name] = val
+                    self.log_csv.writekvs(kvs) 
                     logger.logkv("total timesteps", self.num_timesteps)
                     logger.dumpkvs()
                     # Reset infos:

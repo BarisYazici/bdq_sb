@@ -60,7 +60,7 @@ class DQN(OffPolicyRLModel):
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6, param_noise=False,
                  n_cpu_tf_sess=None, verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False, seed=None):
+                 _init_setup_model=True, log_dir=None, policy_kwargs=None, full_tensorboard_log=False, seed=None):
 
         # TODO: replay_buffer refactoring
         super(DQN, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose, policy_base=DQNPolicy,
@@ -98,6 +98,10 @@ class DQN(OffPolicyRLModel):
         self.exploration = None
         self.params = None
         self.summary = None
+
+        self.log_dir = log_dir
+        if self.log_dir is not None:
+            self.log_csv = logger.CSVOutputFormat(self.log_dir+"/logs.csv")
 
         if _init_setup_model:
             self.setup_model()
@@ -312,7 +316,18 @@ class DQN(OffPolicyRLModel):
                     mean_100ep_reward = round(float(np.mean(episode_rewards[-101:-1])), 1)
 
                 num_episodes = len(episode_rewards)
+                # Log training infos
+                kvs = {}
                 if self.verbose >= 1 and done and log_interval is not None and len(episode_rewards) % log_interval == 0:
+                    if self.log_dir is not None:
+                        kvs["episodes"] = num_episodes
+                        kvs["mean_100rew"] = mean_100ep_reward
+                        kvs["current_lr"] = self.learning_rate
+                        kvs["success_rate"] = np.mean(episode_successes[-100:])
+                        kvs["total_timesteps"] = self.num_timesteps
+                        kvs["mean_td_errors"] = np.mean(td_errors)
+                        kvs["time_spent_exploring"] = int(100 * self.exploration.value(self.num_timesteps))
+                        self.log_csv.writekvs(kvs) 
                     logger.record_tabular("steps", self.num_timesteps)
                     logger.record_tabular("episodes", num_episodes)
                     if len(episode_successes) > 0:

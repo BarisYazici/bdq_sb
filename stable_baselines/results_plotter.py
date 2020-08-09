@@ -56,9 +56,16 @@ def ts2xy(timesteps, xaxis):
     """
     if xaxis == X_TIMESTEPS:
         x_var = np.cumsum(timesteps.l.values)
+        # x_var = np.cumsum(timesteps.episodes.values)
+
+        # x_var = timesteps.timesteps.values
+        # print(x_var)
         y_var = timesteps.r.values
+        y_var = timesteps.s.values
     elif xaxis == X_EPISODES:
-        x_var = np.arange(len(timesteps))
+        # x_var = np.arange(len(timesteps))
+        # print(timesteps.episodes)
+        x_var = timesteps.episodes.values
         y_var = timesteps.r.values
     elif xaxis == X_WALLTIME:
         x_var = timesteps.t.values / 3600.
@@ -111,7 +118,8 @@ def plot_results(dirs, num_timesteps, xaxis, task_name):
     for folder in dirs:
         timesteps = load_results(folder)
         if num_timesteps is not None:
-            timesteps = timesteps[timesteps.l.cumsum() <= num_timesteps]
+            # timesteps = timesteps[timesteps.l.cumsum() <= num_timesteps]
+            timesteps = timesteps[timesteps.t <= num_timesteps]
         tslist.append(timesteps)
     xy_list = [ts2xy(timesteps_item, xaxis) for timesteps_item in tslist]
     plot_curves(xy_list, xaxis, task_name)
@@ -134,7 +142,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dirs', help='List of log directories', nargs='*', default=['./log'])
     parser.add_argument('--num_timesteps', type=int, default=int(10e6))
-    parser.add_argument('--xaxis', help='Varible on X-axis', default=X_TIMESTEPS)
+    parser.add_argument('--xaxis', help='Varible on X-axis', default=X_EPISODES)
     parser.add_argument('--task_name', help='Title of plot', default='Breakout')
     args = parser.parse_args()
     args.dirs = [os.path.abspath(folder) for folder in args.dirs]
