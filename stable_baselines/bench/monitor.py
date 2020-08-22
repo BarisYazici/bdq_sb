@@ -45,7 +45,7 @@ class Monitor(gym.Wrapper):
             self.file_handler = open(filename, "wt")
             self.file_handler.write('#%s\n' % json.dumps({"t_start": self.t_start, 'env_id': env.spec and env.spec.id}))
             self.logger = csv.DictWriter(self.file_handler,
-                                         fieldnames=('r', 's', 'l', 't') + reset_keywords + info_keywords)
+                                         fieldnames=('r', 's', 'l', 'c', 'timesteps', 't') + reset_keywords + info_keywords)
             self.logger.writeheader()
             self.file_handler.flush()
 
@@ -94,7 +94,7 @@ class Monitor(gym.Wrapper):
             self.needs_reset = True
             ep_rew = sum(self.rewards)
             eplen = len(self.rewards)
-            ep_info = {"r": round(ep_rew, 6), "s": self.env.sr_mean, "l": eplen, "t": round(time.time() - self.t_start, 6)}
+            ep_info = {"r": round(ep_rew, 6), "s": self.env.sr_mean, "l": eplen, "c": self.env.curriculum._lambda, "timesteps": self.total_steps, "t": round(time.time() - self.t_start, 6)}
             for key in self.info_keywords:
                 ep_info[key] = info[key]
             self.episode_rewards.append(ep_rew)

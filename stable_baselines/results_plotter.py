@@ -59,8 +59,10 @@ def ts2xy(timesteps, xaxis):
         # x_var = np.cumsum(timesteps.episodes.values)
 
         # x_var = timesteps.timesteps.values
+        # x_var = np.cumsum(timesteps.t.values)
         # print(x_var)
-        y_var = timesteps.r.values
+        # y_var = timesteps.r.values
+        # y_var = timesteps.c.values
         y_var = timesteps.s.values
     elif xaxis == X_EPISODES:
         # x_var = np.arange(len(timesteps))

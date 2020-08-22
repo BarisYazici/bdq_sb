@@ -376,8 +376,9 @@ class BDQ(OffPolicyRLModel):
                 num_episodes = len(episode_rewards)
                 # Log training infos
                 kvs = {}
-                if self.verbose >= 1 and done and log_interval is not None and len(episode_rewards) % log_interval == 0 \
-                    and self.num_timesteps % self.train_freq == 0 \
+                if self.verbose >= 1 and done and log_interval is not None \
+                    and len(episode_rewards) % log_interval == 0 \
+                    and self.num_timesteps > self.train_freq \
                     and self.num_timesteps > self.learning_starts:
                     
                     if self.log_dir is not None:
