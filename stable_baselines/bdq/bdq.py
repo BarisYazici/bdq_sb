@@ -62,7 +62,7 @@ class BDQ(OffPolicyRLModel):
                  train_freq=1, batch_size=64, double_q=True, learning_starts=1000, target_network_update_freq=1000, prioritized_replay=True,
                  prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=2e6,
                  prioritized_replay_eps=int(1e8), param_noise=False, n_cpu_tf_sess=None, verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, log_dir=None, policy_kwargs=None, full_tensorboard_log=False, seed=None):
+                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False, seed=None):
 
         super(BDQ, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose, policy_base=BDQPolicy,
                                   requires_vec_env=False, policy_kwargs=policy_kwargs, seed=seed, n_cpu_tf_sess=n_cpu_tf_sess)
@@ -107,10 +107,6 @@ class BDQ(OffPolicyRLModel):
         # BDQ pars
         self.num_actions_pad = num_actions_pad
         self.num_action_grains = num_actions_pad - 1
-
-        self.log_dir = log_dir
-        if self.log_dir is not None:
-            self.log_csv = logger.CSVOutputFormat(self.log_dir+"/logs.csv")
 
         if _init_setup_model:
             self.setup_model()
@@ -380,17 +376,6 @@ class BDQ(OffPolicyRLModel):
                     and len(episode_rewards) % log_interval == 0 \
                     and self.num_timesteps > self.train_freq \
                     and self.num_timesteps > self.learning_starts:
-                    
-                    if self.log_dir is not None:
-                        kvs["episodes"] = num_episodes
-                        kvs["mean_100rew"] = mean_100ep_reward
-                        kvs["current_lr"] = self.learning_rate
-                        kvs["success_rate"] = np.mean(episode_successes[-100:])
-                        kvs["total_timesteps"] = self.num_timesteps
-                        kvs["mean_loss"] = mean_loss
-                        kvs["mean_td_errors"] = np.mean(td_errors)
-                        kvs["time_spent_exploring"] = int(100 * self.exploration.value(self.num_timesteps))
-                        self.log_csv.writekvs(kvs) 
 
                     logger.record_tabular("steps", self.num_timesteps)
                     logger.record_tabular("episodes", num_episodes)

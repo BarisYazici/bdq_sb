@@ -64,7 +64,7 @@ class SAC(OffPolicyRLModel):
                  gradient_steps=1, target_entropy='auto', action_noise=None,
                  random_exploration=0.0, verbose=0, tensorboard_log=None,
                  _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False,
-                 seed=None, log_dir=None, n_cpu_tf_sess=None):
+                 seed=None, n_cpu_tf_sess=None):
 
         super(SAC, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose,
                                   policy_base=SACPolicy, requires_vec_env=False, policy_kwargs=policy_kwargs,
@@ -119,10 +119,6 @@ class SAC(OffPolicyRLModel):
         self.processed_obs_ph = None
         self.processed_next_obs_ph = None
         self.log_ent_coef = None
-
-        self.log_dir = log_dir
-        if self.log_dir is not None:
-            self.log_csv = logger.CSVOutputFormat(self.log_dir+"/logs.csv")
 
         if _init_setup_model:
             self.setup_model()
@@ -517,8 +513,6 @@ class SAC(OffPolicyRLModel):
                     if len(infos_values) > 0:
                         for (name, val) in zip(self.infos_names, infos_values):
                             logger.logkv(name, val)
-                            kvs[name] = val
-                    self.log_csv.writekvs(kvs) 
                     logger.logkv("total timesteps", self.num_timesteps)
                     logger.dumpkvs()
                     # Reset infos:
